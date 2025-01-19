@@ -1,6 +1,6 @@
 # sitectl
 
-[sitectl](https://github.com/LibOps/sitectl) is a useful utility to interact with your LibOps site.
+[sitectl](https://github.com/libops/sitectl) is a useful utility to interact with your libops site.
 
 ## Install
 
@@ -8,7 +8,7 @@
 
 `sitectl` requires Google Cloud's `gcloud` CLI to be installed and authenticated on the same machine you run `sitectl` commands from.
 
-So before installing LibOps you must:
+So before installing libops you must:
 
 1. [Install the gcloud CLI](https://cloud.google.com/sdk/docs/install)
 2. [Initialize the gcloud CLI](https://cloud.google.com/sdk/docs/initializing)
@@ -21,13 +21,13 @@ After `gcloud` is installed you can install `sitectl` using homebrew or a binary
 You can install `sitectl` using homebrew
 
 ```
-brew tap libops/homebrew https://github.com/LibOps/homebrew
+brew tap libops/homebrew https://github.com/libops/homebrew
 brew install libops/homebrew/sitectl
 ```
 
 ### Download Binary
 
-Instead of homebrew, you can download a binary for your system from [the latest release](https://github.com/LibOps/sitectl/releases/latest)
+Instead of homebrew, you can download a binary for your system from [the latest release](https://github.com/libops/sitectl/releases/latest)
 
 Then put the binary in a directory that is in your `$PATH`
 
@@ -45,19 +45,19 @@ Usage:
 Available Commands:
   backup      Backup your libops environment
   completion  Generate the autocompletion script for the specified shell
-  config-ssh  Populate ~/.ssh/config with LibOps development environment
+  config-ssh  Populate ~/.ssh/config with libops development environment
   drush       Run drush commands on your libops environment
-  get         Display information about your LibOps environment.
+  get         Display information about your libops environment.
   help        Help about any command
-  import      Import resources to your LibOps environment.
-  sequelace   Connect to your LibOps database using Sequel Ace (Mac OS only)
-  set         Set information on your LibOps environment.
+  import      Import resources to your libops environment.
+  sequelace   Connect to your libops database using Sequel Ace (Mac OS only)
+  set         Set information on your libops environment.
   sync-db     Transfer the database from one environment to another
 
 Flags:
-  -e, --environment string   LibOps environment (default "development")
+  -e, --environment string   libops environment (default "development")
   -h, --help                 help for libops
-  -p, --site string          LibOps project/site (default "YOUR-LIBOPS-SITE")
+  -p, --site string          libops project/site (default "YOUR-LIBOPS-SITE")
   -v, --version              version for libops
 
 Use "sitectl [command] --help" for more information about a command.
@@ -75,9 +75,9 @@ sitectl backup -e production
 
 ### set developer
 
-Use this command to add a developer to your LibOps site environments.
+Use this command to add a developer to your libops site environments.
 
-LibOps site environments and CLI commands are protected by a firewall and/or gcloud authentication. To provide access to a developer `sara@institution.edu` who works from two locations with IP addresses `1.2.3.4` and `5.6.7.8` you could run the command:
+libops site environments and CLI commands are protected by a firewall and/or gcloud authentication. To provide access to a developer `sara@institution.edu` who works from two locations with IP addresses `1.2.3.4` and `5.6.7.8` you could run the command:
 
 ```
 sitectl set developer \
@@ -108,7 +108,7 @@ That command will automatically read your gcloud authenticated email, SSH public
 
 ### drush
 
-You can use `sitectl drush` to execute drush commands against your LibOps environment.
+You can use `sitectl drush` to execute drush commands against your libops environment.
 
 #### Reset super user password
 
@@ -126,7 +126,7 @@ sitectl drush -- cr
 
 ### sequelace
 
-On Mac OS with [Sequel Ace](https://sequel-ace.com/) installed, running `sitectl sequelace` will open a connection to your LibOps development environment database. You could connect to production similarly via
+On Mac OS with [Sequel Ace](https://sequel-ace.com/) installed, running `sitectl sequelace` will open a connection to your libops development environment database. You could connect to production similarly via
 
 ```
 sitectl sequelace -e production
@@ -148,7 +148,7 @@ git push origin development
 
 ### get info
 
-Running `sitectl get info` will return a JSON string containing connection information for different aspects of your LibOps environment:
+Running `sitectl get info` will return a JSON string containing connection information for different aspects of your libops environment:
 
 ```
 sitectl get info | jq .
@@ -184,7 +184,7 @@ sitectl get info | jq .
 
 ### backup
 
-Running `sitectl backup` will backup the database for your LibOps environment. For example you could backup the production database by running:
+Running `sitectl backup` will backup the database for your libops environment. For example you could backup the production database by running:
 
 ```
 sitectl backup -e production
@@ -192,7 +192,7 @@ sitectl backup -e production
 
 ### import db
 
-Running `sitectl import db` can get a SQL file on your local machine imported into a LibOps environment. For example, to import a SQL file called "drupal.sql" from your local machine to development you can run:
+Running `sitectl import db` can get a SQL file on your local machine imported into a libops environment. For example, to import a SQL file called "drupal.sql" from your local machine to development you can run:
 
 ```
 sitectl import db --file drupal.sql

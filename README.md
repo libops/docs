@@ -1,10 +1,10 @@
-# LibOps Documentation
+# libops Documentation
 
 Viewable at https://docs.libops.io
 
-This repository contains the documentation for the LibOps platform.
+This repository contains the documentation for the libops platform.
 
-This repository also serves as an issue queue for any bugs or feature requests for LibOps.
+This repository also serves as an issue queue for any bugs or feature requests for libops.
 
 
 ## Local docs development

@@ -1,6 +1,6 @@
-# LibOps Metrics
+# libops Metrics
 
-Your LibOps site services emits metrics that are aggregated and displayed on your LibOps Metrics dashboard. You can find the link to you dashboard at [https://www.libops.io/user](https://www.libops.io/user)
+Your libops site services emits metrics that are aggregated and displayed on your libops Metrics dashboard. You can find the link to you dashboard at [https://www.libops.io/user](https://www.libops.io/user)
 
 ## Timing metrics
 
@@ -18,12 +18,12 @@ The dashboard contains a filtered log view of any PHP errors that might be occur
 
 ## Container metrics
 
-All of the services running on your LibOps envionrment have CPU, memory, i/o, and network metrics emitted. These metrics can be viewed as an aggregate of all environments and all containers
+All of the services running on your libops envionrment have CPU, memory, i/o, and network metrics emitted. These metrics can be viewed as an aggregate of all environments and all containers
 
 ![Container metrics](../assets/img/metrics/container-metrics.gif)
 
 ### Filter container metrics
 
-You also can filter which container metrics to view by selecting `cluster` to filter by a given LibOps environment and/or selectioning `name` to filter by a given service
+You also can filter which container metrics to view by selecting `cluster` to filter by a given libops environment and/or selectioning `name` to filter by a given service
 
 ![Filter metrics](../assets/img/metrics/container-metrics-filters.gif)

@@ -1,7 +1,7 @@
-site_name: LibOps
+site_name: libops
 site_url: https://docs.libops.io/
 
-repo_url: https://github.com/LibOps/docs
+repo_url: https://github.com/libops/docs
 edit_uri: 'edit/main/docs/'
 
 theme: material
@@ -14,8 +14,8 @@ nav:
   - Home: index.md
   - Development:
     - Overview: development/index.md
-    - LibOps CLI: development/cli.md
-    - LibOps YML: development/yml.md
+    - libops CLI: development/cli.md
+    - libops YML: development/yml.md
     - Metrics: development/metrics.md
   - Site:
     - Overview: 'site/index.md'

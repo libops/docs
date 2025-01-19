@@ -1,6 +1,6 @@
-Better documentation coming soon. For now, here is an example structure of your LibOps YAML.
+Better documentation coming soon. For now, here is an example structure of your libops YAML.
 
-A file names `libops.yml` will exist in your GitHub repository. You will be able to edit the YAML file to configure different aspects of your LibOps environments.
+A file names `libops.yml` will exist in your GitHub repository. You will be able to edit the YAML file to configure different aspects of your libops environments.
 
 ```
 version: 0.1
@@ -9,7 +9,7 @@ version: 0.1
 # And the MAJOR.MINOR release only
 php: 8.2
 
-# The CIDR notation for every source IP that can access your LibOps non-production environments over HTTPS
+# The CIDR notation for every source IP that can access your libops non-production environments over HTTPS
 # Should be restricted to just IPs for your organization.
 # Both IPv4 and IPv6 addresses are supported.
 # Network mask (e.g. /24) must be greater than or equal to 16 for IPv4 and 120 for IPv6
@@ -19,15 +19,15 @@ https-firewall:
   - 192.168.100.0/24
   - 192.168.200.0/24
 
-# The CIDR notation for every source IP that can SFTP into your LibOps non-production environments
+# The CIDR notation for every source IP that can SFTP into your libops non-production environments
 # Should be restricted to just IPs for your organization. Ideally, just for machines that need access.
-# Only IPv4 are supported for establishing SSH connections to your LibOps environment
+# Only IPv4 are supported for establishing SSH connections to your libops environment
 ssh-firewall:
   # private IPs are just examples. Can be replaced (along with this comment)
   - 127.0.12.1/32
   - 192.168.100.1/32
 
-# The CIDR notation for every IP Address that can not access any of your LibOps environments, including production
+# The CIDR notation for every IP Address that can not access any of your libops environments, including production
 # This can be used to block malicious actors
 # Both IPv4 and IPv6 addresses are supported.
 # Network mask (e.g. /24) must be greater than or equal to 16 for IPv4 and 120 for IPv6
@@ -36,7 +36,7 @@ blocked-ips:
   - 127.0.123.123/32
   - 192.168.255.100/32
 
-# Google Cloud users that can make configuration changes to your LibOps environments (more than likely all developers on your site)
+# Google Cloud users that can make configuration changes to your libops environments (more than likely all developers on your site)
 # Their IP addresses should be included in ssh-firewall and https-firewall
 # joe and sarah are just examples - they can be replaced (along with this comment when they are replaced)
 developers:
