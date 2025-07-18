@@ -6,7 +6,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-push:
-    uses: libops/.github/workflows/build-push.yml@main
+    uses: libops/.github/.github/workflows/build-push.yml@main
     with:
       image: "shared/docs"
     permissions:
