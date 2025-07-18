@@ -1,4 +1,4 @@
-FROM python:3.13-alpine@sha256:18159b2be11db91f84b8f8f655cd860f805dbd9e49a583ddaac8ab39bf4fe1a7
+FROM python:3.13-alpine@sha256:37b14db89f587f9eaa890e4a442a3fe55db452b69cca1403cc730bd0fbdc8aaf
 
 RUN mkdir -p /docs
 
@@ -12,7 +12,7 @@ COPY . .
 RUN mkdocs build
 
 # serve the docs via nginx
-FROM nginx:1.27@sha256:5ed8fcc66f4ed123c1b2560ed708dc148755b6e4cbd8b943fab094f2c6bfa91e
+FROM nginx:1.29@sha256:f5c017fb33c6db484545793ffb67db51cdd7daebee472104612f73a85063f889
 COPY --from=0 /docs/site /usr/share/nginx/html
 RUN echo 'real_ip_header X-Forwarded-For;' > /etc/nginx/conf.d/real-ip.conf \
   && echo 'set_real_ip_from 169.254.1.1/32;' >> /etc/nginx/conf.d/real-ip.conf
