@@ -21,15 +21,15 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-    - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # v4
+    - uses: 'actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955' # v4
 
-    - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # v2
+    - uses: 'google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed' # v2
       with:
         workload_identity_provider: ${{ secrets.GCLOUD_OIDC_POOL }}
         service_account: ${{ secrets.GSA }}
 
     - id: 'deploy'
-      uses: 'google-github-actions/deploy-cloudrun@1ec29da1351112c7904fb60454a55e3e1021a51c' # v2
+      uses: 'google-github-actions/deploy-cloudrun@251330ba9a8a34bfbc1622895f42e1d53fd14522' # v2
       with:
         service: 'docs-production'
         image: 'us-docker.pkg.dev/${{ secrets.GCLOUD_PROJECT }}/shared/docs:main'
