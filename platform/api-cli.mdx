@@ -1,0 +1,73 @@
+---
+title: "API and sitectl"
+description: "How the LibOps API and sitectl command line support operators, developers, and automation"
+---
+
+LibOps gives teams three operating surfaces: the dashboard, the full platform API, and the `sitectl` command-line utility.
+
+That matters because institutions rarely have a single type of operator. Some work belongs in a UI, some belongs in automation, and some belongs in a terminal next to the application repository.
+
+## Full Platform API
+
+The LibOps API exposes the core platform resources:
+
+- Organizations.
+- Projects.
+- Sites.
+- Settings.
+- Secrets.
+- Firewall rules.
+- Members.
+- SSH keys.
+- API keys.
+- Deployment and status operations.
+
+Teams can use the API to integrate LibOps with provisioning systems, reporting workflows, governance tooling, or internal service catalogs.
+
+<Card title="API Reference" icon="code" href="/api/reference/introduction">
+  Explore the LibOps API endpoints and OpenAPI specification.
+</Card>
+
+## sitectl
+
+`sitectl` is the LibOps command-line utility for operating local and remote Docker Compose sites.
+
+It is built for teams that run production open-source software, often across multiple applications, without making every project depend on a dedicated DevOps hire.
+
+The more institutional knowledge that lives in `sitectl`, the fewer institutions get blocked from adopting the software they need.
+
+`sitectl` uses Docker Compose as its operational primitive so that:
+
+- **Institutions** can reliably host the software they depend on without staffing a dedicated DevOps team.
+- **Individual contributors** get standardized tooling that removes environmental toil, so they can focus on the application work that matters.
+
+## Turn Best Practices Into Code
+
+`sitectl` helps operators run Compose projects in production by turning common practices into repeatable commands.
+
+The more institutional knowledge that lives in the tool, the less it depends on any one person.
+
+<CardGroup cols={2}>
+  <Card title="Interactive Operations" icon="terminal">
+    Use the terminal UI for routine site setup, monitoring, and operator workflows where interactive guidance is useful.
+  </Card>
+  <Card title="Contexts" icon="server">
+    Track local and remote environments so `sitectl` understands where a site lives and how to reach it.
+  </Card>
+  <Card title="Plugins" icon="plug">
+    Add application-specific behavior for OJS, Drupal, WordPress, Omeka, Islandora, and other stacks without abandoning the core Compose workflow.
+  </Card>
+  <Card title="Components" icon="database">
+    Model reviewed stack defaults and operator choices in a structured way instead of relying on ad hoc Compose notes.
+  </Card>
+</CardGroup>
+
+## Why teams use both
+
+Common tooling lowers the cost of adopting open-source software. When more GLAM institutions can run, understand, and maintain their own instances, the surrounding software communities get more capable participants.
+
+LibOps uses the API and `sitectl` together so platform operations can support both ends of that spectrum: centralized automation for repeatability, and hands-on command-line workflows for people doing the application work.
+
+<Card title="sitectl CLI Reference" icon="terminal" href="/cli/introduction">
+  Install and configure `sitectl`.
+</Card>

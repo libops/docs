@@ -1,0 +1,39 @@
+---
+title: 'Firewall'
+description: 'Manage LibOps firewall rules for organizations, projects, and Sites'
+---
+
+Firewall rules can be attached at organization, project, or Site scope. Pass exactly one scope flag.
+
+## Create
+
+```bash
+sitectl libops create firewall \
+  --site-id "$SITE_ID" \
+  --name office \
+  --cidr 203.0.113.0/24 \
+  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
+```
+
+Rule types:
+
+- `FIREWALL_RULE_TYPE_HTTPS_ALLOWED`
+- `FIREWALL_RULE_TYPE_SSH_ALLOWED`
+- `FIREWALL_RULE_TYPE_BLOCKED`
+
+## List
+
+```bash
+sitectl libops list firewall --organization-id "$ORGANIZATION_ID"
+sitectl libops list firewall --project-id "$PROJECT_ID"
+sitectl libops list firewall --site-id "$SITE_ID"
+```
+
+## Delete
+
+```bash
+sitectl libops delete firewall "$RULE_ID" --site-id "$SITE_ID"
+sitectl libops delete firewall "$RULE_ID" --site-id "$SITE_ID" --yes
+```
+
+Firewall rules do not currently support in-place update. Delete and recreate the rule.

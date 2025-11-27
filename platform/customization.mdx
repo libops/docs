@@ -1,0 +1,74 @@
+---
+title: "Customization"
+description: "How LibOps supports GitHub workflows and managed customization on top of open-source applications"
+---
+
+LibOps is built for organizations that need open-source software to fit real institutional workflows. That often means configuration, themes, plugins, modules, integrations, migrations, and application-specific code.
+
+The platform keeps that work in a maintainable shape.
+
+## Repository-Backed Changes
+
+LibOps uses GitHub repositories as the source of truth for site code and deployment configuration. Customization work should become reviewable code, not a collection of manual production edits.
+
+That repository-backed model supports:
+
+- Pull requests for review.
+- Task branches for isolated work.
+- Rollout scripts for repeatable deployments.
+- Clear ownership of configuration, templates, and custom code.
+- Upgrade paths that can be tested against the customer repository.
+
+## Managed Customization Support
+
+LibOps supports custom features on top of open-source projects while preserving the review and QA practices institutions expect for production systems.
+
+Managed customization is useful for work such as:
+
+- Updating templates, configuration, modules, plugins, and themes.
+- Implementing app-specific feature requests.
+- Investigating logs and deployment failures.
+- Preparing pull requests for dependency updates.
+- Translating operational requests into repository changes that can be reviewed.
+
+The workflow is intentionally tied to development environments, GitHub, and deployment conventions. Work happens in the repository, moves through a GitHub pull request, and becomes visible in a live preview environment before production rollout.
+
+That pull request becomes the review checkpoint. Technical reviewers can inspect the diff, site owners can review the running preview, and internal stakeholders can perform quality assurance before the change is merged or rolled out to production.
+
+## Ways to Work
+
+LibOps supports different ownership models.
+
+### LibOps Managed
+
+Use LibOps Managed when your organization wants LibOps to own repository operations, infrastructure, updates, deployment coordination, and routine platform work.
+
+This is the fastest path for teams that want the benefits of open-source applications without staffing every operational role internally.
+
+### Customer GitHub
+
+Use a customer-owned GitHub organization when your developers want the repository in your own GitHub org, with your review process and internal development workflows.
+
+LibOps can still integrate with the repository through the LibOps GitHub App, task branches, and pull requests. If you want LibOps to create new site repositories in that GitHub organization, the app installation must allow repository creation there.
+
+### Co-Managed
+
+Use a co-managed model when your team wants to participate directly but still wants LibOps available for implementation, review, upgrade support, or operational coverage.
+
+This is often the right fit for institutions with application expertise but limited DevOps capacity.
+
+### Fully Managed Customization
+
+Use fully managed customization when LibOps should handle the project end to end: custom feature work, review, deployment, updates, and ongoing maintenance.
+
+This gives organizations a way to extend open-source software without creating a permanent internal operations burden.
+
+## Customization Without Isolation
+
+Custom code should not isolate an institution from the software community it depends on. LibOps encourages customization that stays visible, reviewable, and maintainable so future upgrades remain possible.
+
+When a customization has broader value, the same repository and pull request practices can help turn local work into upstream issue reports, patches, documentation, or shared implementation patterns.
+
+<Card title="GitHub Integration" icon="github" href="/platform/github">
+  Learn how managed repositories, customer-owned GitHub organizations, pull requests, and short-lived GitHub App tokens work.
+</Card>

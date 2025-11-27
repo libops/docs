@@ -1,0 +1,67 @@
+---
+title: 'Sites'
+description: 'Manage LibOps dashboard Sites from sitectl'
+---
+
+The dashboard calls these records **Sites**. In core `sitectl` context language, a site record is also the remote runtime environment for a codebase, so `list environments` is available as an explicit alias-style command.
+
+## Create
+
+```bash
+sitectl libops create site \
+  --project-id "$PROJECT_ID" \
+  --name production \
+  --github-repository git@github.com:example/collections.git \
+  --github-ref heads/main \
+  --compose-path /mnt/disks/data/compose \
+  --compose-file docker-compose.yml \
+  --application-type islandora
+```
+
+Optional lifecycle commands tell LibOps how to operate the repository:
+
+```bash
+sitectl libops create site \
+  --project-id "$PROJECT_ID" \
+  --name staging \
+  --github-repository git@github.com:example/collections.git \
+  --github-ref heads/staging \
+  --application-type drupal \
+  --up-cmd "make up" \
+  --init-cmd "docker compose run --rm init" \
+  --rollout-cmd "make rollout"
+```
+
+## List and get
+
+```bash
+sitectl libops list sites
+sitectl libops list sites --organization-id "$ORGANIZATION_ID"
+sitectl libops list sites --project-id "$PROJECT_ID"
+sitectl libops list environments --project-id "$PROJECT_ID"
+sitectl libops get site "$SITE_ID"
+```
+
+`list sites` matches the dashboard terminology. `list environments` returns the same LibOps site records with environment-oriented output headers.
+
+## Edit and delete
+
+```bash
+sitectl libops edit site "$SITE_ID" --name production
+sitectl libops edit site "$SITE_ID" --github-ref heads/main
+sitectl libops edit site "$SITE_ID" --up-cmd "make up" --rollout-cmd "make rollout"
+sitectl libops delete site "$SITE_ID" --yes
+```
+
+The current API does not update repository, compose path/file, port, or application type after creation.
+
+## Runtime workflows
+
+```bash
+sitectl libops ping "$SITE_ID"
+sitectl libops ssh "$SITE_ID"
+sitectl libops checkout "$SITE_ID" ./collections
+sitectl libops context update "$SITE_ID"
+```
+
+`ping` wakes or checks the web URL. `ssh` connects to the site environment. `checkout` clones the configured GitHub repository and checks out the configured ref. `context update` writes a core `sitectl` remote context from the LibOps site.

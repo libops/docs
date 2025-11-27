@@ -1,0 +1,129 @@
+---
+title: "Why Docker Compose"
+description: "The reasoning behind LibOps choosing Docker Compose as the operational foundation for every supported application"
+---
+
+LibOps is built on Docker Compose. That choice shapes what we build, what we do not build, what we ask operators to learn, and what institutions can keep if they ever leave the managed service.
+
+This page captures the reasoning so that contributors, technical evaluators, and operators can make consistent decisions with the same context we did.
+
+## Why we chose Compose
+
+<CardGroup cols={2}>
+  <Card title="Easy to operate" icon="hand">
+    One mental model: a YAML file naming services and how they wire together. No specialized degree required.
+  </Card>
+  <Card title="Already familiar" icon="users">
+    If your team runs containers, they already know Compose. No retraining before you can run your own software.
+  </Card>
+  <Card title="Portable" icon="boxes-packing">
+    A Compose project that runs on LibOps will also run on a laptop, a campus data center, or a single VM somewhere else. No vendor lock-in.
+  </Card>
+  <Card title="Production-parity by default" icon="clone">
+    The exact same orchestration runs in dev and prod. If it works locally, it works in production.
+  </Card>
+</CardGroup>
+
+<Tip>
+These properties matter more for GLAM institutions, colleges, and universities than they would for a hyperscale consumer app. LibOps optimizes for the applications institutions actually run.
+</Tip>
+
+## Why not Kubernetes
+
+<Note>
+This section mirrors the same argument in [sitectl's architecture decisions](https://sitectl.libops.io/contributing/architecture). It's repeated here because the choice is platform-wide, not CLI-specific.
+</Note>
+
+Kubernetes is excellent at what it's designed for: orchestrating thousands of containers across large fleets of machines, with sophisticated rollout patterns and an ecosystem of operators for stateful workloads.
+
+That's a real and important problem. **It just isn't the problem our customers have.**
+
+The applications hosted by most LibOps customers, including Islandora repositories, OJS journals, Drupal sites, Omeka exhibits, and ArchivesSpace instances, rarely need more than modest scaling. Adopting Kubernetes for those workloads adds substantial operational overhead with limited return.
+
+<Check>
+We could have spent engineering resources building Kubernetes operators for each LibOps-supported application family. We deliberately did not. The goal of the platform is to **let institutions adopt open-source software without being blocked by infrastructure complexity**, and choosing Kubernetes would have reintroduced that complexity at the platform layer.
+</Check>
+
+## The same project from laptop to production
+
+Every LibOps template starts from a Docker Compose project.
+
+<Steps>
+  <Step title="make init" icon="folder-plus" />
+  <Step title="make build" icon="hammer" />
+  <Step title="make up" icon="play" />
+  <Step title="make down" icon="stop" />
+  <Step title="make rollout" icon="rocket" />
+</Steps>
+
+Behind those targets is a Compose project that runs the same way in development and production. Variations are confined to the environment: different secrets, different domain names, and different scale parameters. The *structure* does not change.
+
+That consistency compounds:
+
+<CardGroup cols={3}>
+  <Card title="Skill transfer" icon="arrow-right-arrow-left">
+    A developer who learns one LibOps template has learned all of them. Moving between Islandora and OJS isn't a new deployment system to learn.
+  </Card>
+  <Card title="Familiar troubleshooting" icon="magnifying-glass">
+    Production debugging looks like local debugging. Same containers, same network model, same logs.
+  </Card>
+  <Card title="Local-first safety" icon="laptop-code">
+    Anything that runs cleanly on your laptop has already cleared most of the bar for production before CI tests anything.
+  </Card>
+</CardGroup>
+
+## What Compose gives LibOps
+
+The Compose foundation is what makes the rest of the platform tractable.
+
+<CardGroup cols={2}>
+  <Card title="Standardized deployment" icon="ship" href="https://github.com/libops/cloud-compose">
+    [`cloud-compose`](https://github.com/libops/cloud-compose) is a Terraform module that takes any Docker Compose project and deploys it to a Google Cloud VM. Because Compose is the input contract, the module works across all supported application families without per-app customization.
+  </Card>
+  <Card title="Operator CLI" icon="terminal" href="https://sitectl.libops.io">
+    [`sitectl`](https://github.com/libops/sitectl) gives operators kubectl-style contexts for switching between local and remote Compose projects without needing a Kubernetes cluster.
+  </Card>
+  <Card title="Sleep on idle" icon="moon">
+    [`ppb`](https://github.com/libops/ppb) and [`lightsout`](https://github.com/libops/lightsout) put development environments to sleep when nobody is using them, and wake them on demand. Compose's "VM-friendly" shape makes that simple to implement.
+  </Card>
+  <Card title="Reviewable customization" icon="code-branch">
+    Compose-based projects move through normal GitHub workflows. A consistent project shape makes changes predictable and reviewable.
+  </Card>
+</CardGroup>
+
+## Trade-offs we accept
+
+Compose isn't the right tool for every workload. We accept some constraints in exchange for the simplicity:
+
+<CardGroup cols={3}>
+  <Card title="Single-VM scaling" icon="server">
+    Each Compose project runs on a single VM. Sites that genuinely need to scale horizontally across many machines aren't a fit. In practice, this hasn't been a binding constraint for LibOps customers.
+  </Card>
+  <Card title="Stateful service ops" icon="database">
+    Compose doesn't offer Kubernetes's operator pattern for stateful services. We compensate by being opinionated about supported services (Postgres, MariaDB, Solr, Fedora) and handling backups, restores, and upgrades through platform-level automation.
+  </Card>
+  <Card title="No service mesh" icon="diagram-project">
+    We don't need one at our scale. If we ever did, this assumption would deserve revisiting.
+  </Card>
+</CardGroup>
+
+<Info>
+These trade-offs are deliberate, and every one of them is reversible if a customer's needs cross the threshold where the trade no longer pencils. For the institutions LibOps serves today, they're the right call.
+</Info>
+
+## Related reading
+
+<CardGroup cols={2}>
+  <Card title="sitectl architecture decisions" icon="terminal" href="https://sitectl.libops.io/contributing/architecture">
+    The CLI-specific version of this argument, including the rationale for kubectl-style contexts and the plugin model.
+  </Card>
+  <Card title="Managed Platform" icon="cloud" href="/platform/managed-platform">
+    How LibOps applies these choices in production hosting.
+  </Card>
+  <Card title="Engineer Guide" icon="code" href="/platform/engineer-guide">
+    What the Compose pattern looks like in day-to-day technical workflows.
+  </Card>
+  <Card title="Open-source repos" icon="github" href="https://github.com/libops">
+    `cloud-compose`, `sitectl`, `ppb`, and `lightsout` on GitHub.
+  </Card>
+</CardGroup>

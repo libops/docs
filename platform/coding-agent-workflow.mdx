@@ -1,0 +1,246 @@
+---
+title: "LibOps Task Agent Workflow"
+description: "How LibOps connects the LibOps Task Agent, preview environments, GitHub pull requests, and staff review to safely customize sites"
+---
+
+The **LibOps Task Agent** is an AI-assisted development tool that implements customization requests directly within your site repository. The agent operates against isolated development or ephemeral preview environments, so every change is staged and reviewable before it reaches production.
+
+This workflow lets stakeholders propose and preview site changes without bypassing technical review, quality assurance, or established deployment controls.
+
+<Info>
+The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported, and LibOps evaluates new open-weight models as they become available.
+</Info>
+
+## Models and execution boundary
+
+The current LibOps Task Agent harness is Codex. Supported harnesses are documented in the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) project.
+
+The supported models run inside your organization's infrastructure on the LibOps-managed platform. Only members of your organization can access the infrastructure serving those models.
+
+Contact [LibOps](https://www.libops.io/contact/) if your organization wants to integrate with Anthropic, OpenAI, or another model provider.
+
+## Why use the LibOps Task Agent?
+
+Institutional site changes often start with a practical request: adjust a theme, configure a plugin, update a workflow, or fix a specific bug. In most environments, turning that request into a running preview takes coordination across several people and tools.
+
+LibOps shortens that path. A stakeholder describes the change; the platform implements it on a dedicated branch, deploys it to a preview environment, and opens a GitHub pull request. Technical reviewers can inspect the code while site managers review the behavior on a live site.
+
+<Check>
+This is **not** unchecked automation. It reduces the time between "we need a change" and "we have something reviewable" without skipping review.
+</Check>
+
+## The collaborative flow
+
+<Steps>
+  <Step title="Task creation" icon="message">
+    A site owner, developer, or LibOps operator defines a task for a specific site.
+  </Step>
+  <Step title="Environment selection" icon="server">
+    LibOps provisions or selects an isolated development or ephemeral preview environment for the work.
+  </Step>
+  <Step title="Agent implementation" icon="wand-magic-sparkles">
+    The Task Agent implements the change in the site's repository on a dedicated task branch.
+  </Step>
+  <Step title="Pull request" icon="github">
+    The agent opens or updates a GitHub pull request, which becomes the record of every code and configuration change.
+  </Step>
+  <Step title="Preview deployment" icon="globe">
+    The preview environment shows the proposed changes on a live version of the site.
+  </Step>
+  <Step title="Stakeholder review" icon="eye">
+    Site managers and other stakeholders validate the behavior and content in the preview environment before production changes.
+  </Step>
+  <Step title="Engineering review" icon="magnifying-glass-chart">
+    Engineers (or LibOps reviewers) inspect the code changes in GitHub against institutional standards.
+  </Step>
+  <Step title="Quality assurance" icon="clipboard-check">
+    Final QA against the preview environment confirms the change addresses the original requirement.
+  </Step>
+  <Step title="Production rollout" icon="rocket">
+    Once approved and merged, the change follows the standard, automated deployment path to production.
+  </Step>
+</Steps>
+
+## Starting a task from Slack
+
+The LibOps Slack integration lets stakeholders start tasks without leaving their primary communication tool.
+
+<Steps>
+  <Step title="Discover your resources" icon="list">
+    List the organizations, projects, and sites your account can access.
+
+    ```text Slack
+    /libops orgs
+    /libops projects [org_uuid]
+    /libops sites [project_uuid]
+    ```
+  </Step>
+  <Step title="Copy the ready-made command" icon="copy">
+    Each site list includes a pre-formatted command:
+
+    ```text Slack
+    - Main site `[site_uuid]` (production, project `[project_uuid]`)
+      Run: `/libops chat [org_uuid] project [project_uuid] site [site_uuid] <request>`
+    ```
+  </Step>
+  <Step title="Submit the request" icon="paper-plane">
+    Replace `<request>` with your requirement:
+
+    ```text Slack
+    /libops chat [org_uuid] project [project_uuid] site [site_uuid] Add a homepage alert banner that editors can toggle via the CMS.
+    ```
+  </Step>
+  <Step title="Wait for the thread update" icon="bell">
+    LibOps queues the task, stages the work in a preview environment, and replies in the Slack thread with links once the implementation is ready.
+
+    ```text Slack
+    LibOps task `12345678` is ready.
+    Preview: https://preview.example.edu
+    Pull request: https://github.com/example/site/pull/42
+    Summary:
+    Implemented an editable homepage alert banner and integrated the toggle setting into the theme configuration.
+    ```
+  </Step>
+</Steps>
+
+## Staff review and release control
+
+The GitHub pull request and the preview environment are the primary control points for every AI-assisted change.
+
+<CardGroup cols={2}>
+  <Card title="Engineering review" icon="code">
+    Developers inspect the code, configuration, and dependencies for security and architectural alignment.
+  </Card>
+  <Card title="Domain validation" icon="eye">
+    Site managers and subject matter experts confirm the change correctly addresses the functional requirement.
+  </Card>
+  <Card title="Stakeholder approval" icon="user-check">
+    Site owners retain final authority over what's acceptable for production.
+  </Card>
+  <Card title="LibOps backup" icon="hand-holding-heart">
+    For organizations that need additional coverage, LibOps reviewers can provide expert review and implementation assistance.
+  </Card>
+</CardGroup>
+
+<Warning>
+Production environments are **never** used as a staging area for the LibOps Task Agent. Every change must move through a task branch, a preview environment, and a human-led review before merging.
+</Warning>
+
+## Interactive PR feedback
+
+Collaboration continues after the pull request opens. Reviewers can request adjustments or surface edge cases directly in GitHub.
+
+When a reviewer with write access leaves a PR comment mentioning `@libops`, the platform routes that feedback back to the agent. The agent processes the request, updates the branch, and pushes a new revision to the same pull request.
+
+<CardGroup cols={2}>
+  <Card title="Integrated feedback" icon="message">
+    Standard GitHub PR comments. Mention `@libops` for agent-assisted updates.
+  </Card>
+  <Card title="Persistent context" icon="link">
+    The original LibOps task stays linked to the evolving pull request.
+  </Card>
+  <Card title="Iterative improvement" icon="rotate">
+    The agent can respond with additional commits to address specific review points.
+  </Card>
+  <Card title="Continuous validation" icon="eye">
+    Stakeholders re-verify the preview environment as the agent refines the implementation.
+  </Card>
+</CardGroup>
+
+<Tip>
+**Example exchange:**
+
+1. The agent opens a PR for a new feature.
+2. A reviewer comments: `` `@libops` please ensure the banner text supports Markdown. ``
+3. LibOps maps the comment to the task and directs the agent to update the implementation.
+4. The agent commits an updated version; the PR and preview environment refresh.
+</Tip>
+
+## Choose your implementation path
+
+The Task Agent is useful when stakeholders need a reviewable change but do not need to run the project locally. LibOps still respects the engineer's workflow.
+
+<Tabs>
+  <Tab title="Via the Task Agent" icon="wand-magic-sparkles">
+    Best for changes a stakeholder can request from the Dashboard or Slack and validate visually.
+
+    - No local environment required.
+    - Same GitHub PR + preview environment as the manual path.
+    - Iterative refinement via `@libops` PR comments.
+    - Available from the Dashboard or Slack.
+  </Tab>
+
+  <Tab title="Engineering locally" icon="laptop-code">
+    Best for engineers who prefer their own tools or for changes where local iteration is faster.
+
+    <Steps>
+      <Step title="Clone the repository" icon="github">
+        Work in your institution's GitHub organization or a local checkout.
+      </Step>
+      <Step title="Standard local workflow" icon="docker">
+        Every LibOps project includes a `Makefile` with `build`, `up`, `lint`, and `test` targets. Docker Compose is the only prerequisite.
+      </Step>
+      <Step title="Branch and pull request" icon="code-branch">
+        Use the same Git-based workflow as the agent: create a branch, push changes, and open a PR.
+      </Step>
+      <Step title="Automatic preview" icon="globe">
+        Opening a PR provisions a preview environment for your branch, exactly like the agent path.
+      </Step>
+      <Step title="Operate with sitectl" icon="terminal">
+        Manage site operations, secrets, and deployments from your local terminal.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+<Check>
+Whichever path you use, the destination is the same: reviewable code, a validated preview, and a repeatable rollout to production.
+</Check>
+
+## Where the Task Agent helps
+
+The Task Agent works best for scoped tasks where the outcome is easy to verify in a preview environment.
+
+<CardGroup cols={2}>
+  <Card title="Theme & template adjustments" icon="paintbrush">
+    UI refinements, navigation tweaks, presentation polish.
+  </Card>
+  <Card title="Plugin / module configuration" icon="puzzle-piece">
+    Adding capabilities or wiring new modules into a stack.
+  </Card>
+  <Card title="Application settings" icon="sliders">
+    Application-level configuration that doesn't require migrations.
+  </Card>
+  <Card title="Content models & workflows" icon="diagram-project">
+    Adjustments to fields, content types, or editorial workflows.
+  </Card>
+  <Card title="Security & dependency findings" icon="shield">
+    Addressing scan results or dependency updates.
+  </Card>
+  <Card title="Bug investigation" icon="bug">
+    Reproducing and resolving specific issues with logs and previews.
+  </Card>
+</CardGroup>
+
+For complex requirements, work incrementally: break the project into reviewable tasks, validate each one in a preview environment, and only merge after a successful review.
+
+## Structured review, repeatable rollout
+
+LibOps keeps the review surface familiar and transparent. GitHub holds the technical record of the change; the preview environment shows the behavior; the platform's rollout pipeline ensures only approved work reaches production.
+
+This combination lets directors, site managers, and engineers participate without compromising the technical integrity of the institution's applications.
+
+<CardGroup cols={2}>
+  <Card title="Customization models" icon="code" href="/platform/customization">
+    Managed, co-managed, and self-managed customization options.
+  </Card>
+  <Card title="Slack integration" icon="slack" href="/platform/slack">
+    Use the LibOps Task Agent from your Slack workspace.
+  </Card>
+  <Card title="GitHub integration" icon="github" href="/platform/github">
+    How task branches, pull requests, and preview environments integrate with your repository.
+  </Card>
+  <Card title="Automation backplane" icon="webhook" href="/platform/automation-backplane">
+    Webhook-driven automation for CI/CD and security scanning.
+  </Card>
+</CardGroup>

@@ -1,0 +1,29 @@
+---
+title: 'Environments'
+description: 'List and operate LibOps site environments from sitectl'
+---
+
+The dashboard uses the label **Sites** for the runtime records exposed by the API. Core `sitectl` documentation often calls the same runtime target an **environment** because it represents where a site runs: production, staging, review, local, and so on.
+
+Use either command depending on the audience:
+
+```bash
+# Dashboard terminology
+sitectl libops list sites --project-id "$PROJECT_ID"
+
+# sitectl context terminology
+sitectl libops list environments --project-id "$PROJECT_ID"
+```
+
+Both commands call the same LibOps Site API.
+
+## Environment operations
+
+```bash
+sitectl libops ping "$SITE_ID"
+sitectl libops ssh "$SITE_ID"
+sitectl libops checkout "$SITE_ID" ./checkout-dir
+sitectl libops context update "$SITE_ID" --context-name production
+```
+
+The environment commands derive SSH hostnames and core `sitectl` context defaults from the LibOps site record and its managed domain. Pass `--ssh-host`, `--ssh-user`, `--ssh-port`, or `--ssh-key` when you need to override those defaults.

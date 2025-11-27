@@ -1,0 +1,82 @@
+---
+title: "Security and Operations"
+description: "How LibOps approaches ingress, secrets, updates, access control, and operational governance"
+---
+
+## Security defaults
+
+LibOps turns common security responsibilities into platform defaults, so the secure path is the standard path for every institution.
+
+<CardGroup cols={3}>
+  <Card title="Encrypted traffic and secrets" icon="lock">
+    All traffic is encrypted in transit via Cloudflare edge protection and HashiCorp Vault-backed secret management.
+  </Card>
+  <Card title="Dedicated isolation" icon="server">
+    Each production site runs on its own **Single-Tenant Virtual Machine**, providing a clear compute and security boundary.
+  </Card>
+  <Card title="Automated updates" icon="shield-check">
+    **Renovate-backed** workflows keep application dependencies, container images, and platform components continuously updated.
+  </Card>
+</CardGroup>
+
+## Managed Ingress
+
+LibOps places Cloudflare at the front door for sites. Cloudflare ingress helps keep common bot traffic, abuse patterns, and unwanted request volume away from application servers.
+
+This gives institutions a stronger public edge without asking every project team to design its own ingress and bot-management pattern.
+
+## Vault-Backed Secrets
+
+LibOps provides HashiCorp Vault-backed secret storage for organizations. Site credentials, application secrets, API tokens, and environment-specific configuration can be managed as platform resources instead of being scattered across personal files, shell history, or unmanaged `.env` copies.
+
+Secrets can be scoped at organization, project, or site level so shared values and environment-specific overrides stay intentional.
+
+## DevSecOps Updates
+
+LibOps templates use Renovate and shared maintenance workflows to keep the software supply chain moving.
+
+Renovate can propose updates for:
+
+- Core application versions.
+- Plugins, themes, modules, Composer packages, npm packages, Go modules, and other dependencies.
+- Docker images and base images.
+- Operating system packages exposed through image builds.
+- LibOps platform packages, `sitectl` plugins, template conventions, and platform infrastructure references.
+
+The value is visibility and repeatability. Updates become reviewable repository changes that can move through the same rollout process as application work.
+
+## Role-Based Access Control
+
+LibOps uses role-based access control across organizations, projects, and sites. Members can be granted access at the level that matches their responsibility.
+
+This supports a practical governance model:
+
+- Organization owners can manage broad access and shared settings.
+- Project members can operate related sites without receiving access to unrelated programs.
+- Site members can work on a specific environment when they do not need broader authority.
+
+For accounts with a GitHub username, LibOps can also sync repository collaborator permissions from membership. Owner/developer access grants write permission on affected site repositories, while viewer access grants read permission.
+
+## OAuth and Slack Integration
+
+OAuth-based authentication and Slack integration connect LibOps to the way teams already work. Platform identity, team communication, and operational workflows should stay connected.
+
+Slack integration is especially useful for support, notifications, and team workflows around site activity.
+
+## Tenant Isolation
+
+Sites run on their own VMs. This single-tenant model gives each workload a dedicated compute boundary and keeps app-level issues scoped to the site where they occur.
+
+For organizations evaluating risk, this is a simpler model to reason about than shared hosting where unrelated applications compete inside the same runtime.
+
+## Operational Accountability
+
+LibOps keeps application work tied to repositories, rollout scripts, and platform operations. This helps avoid production changes that only exist on a server.
+
+The result is an operational model that supports:
+
+- Clearer audit trails.
+- Repeatable deployments.
+- Safer dependency updates.
+- Easier handoff between LibOps, customer developers, and support staff.
+- Better continuity when team members change.

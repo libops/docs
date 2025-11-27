@@ -1,0 +1,33 @@
+---
+title: 'Settings'
+description: 'Manage visible LibOps settings for organizations, projects, and Sites'
+---
+
+Settings are non-secret key/value configuration. Use secrets for passwords, tokens, keys, and other sensitive values.
+
+## Create
+
+```bash
+sitectl libops create setting \
+  --site-id "$SITE_ID" \
+  --key support_email \
+  --value help@example.edu \
+  --description "Public support contact"
+```
+
+Use `--organization-id`, `--project-id`, or `--site-id` to choose the scope. `--editable=false` creates a locked setting when the API allows it.
+
+## List
+
+```bash
+sitectl libops list settings --organization-id "$ORGANIZATION_ID"
+sitectl libops list settings --project-id "$PROJECT_ID"
+sitectl libops list settings --site-id "$SITE_ID"
+```
+
+## Edit and delete
+
+```bash
+sitectl libops edit setting "$SETTING_ID" --site-id "$SITE_ID" --value new-value
+sitectl libops delete setting "$SETTING_ID" --site-id "$SITE_ID" --yes
+```

@@ -1,0 +1,76 @@
+---
+title: 'Authentication'
+description: 'Log in to LibOps from the terminal and manage sustained CLI access'
+---
+
+LibOps CLI commands are exposed by the `sitectl-libops` plugin. When installed through `sitectl`, run them under the `libops` namespace:
+
+```bash
+sitectl libops login
+sitectl libops whoami
+sitectl libops logout
+```
+
+If you are running the plugin binary directly, use the same command names without the `sitectl libops` prefix.
+
+## Browser login
+
+`login` opens the same dashboard login screen used by the web UI, including **Login with Google**. The CLI starts a temporary localhost callback server, receives the OAuth result, and stores the OAuth token in `~/.sitectl/oauth.json`.
+
+```bash
+sitectl libops login
+sitectl libops login --api-url https://api.libops.io
+sitectl libops login --timeout 10m
+```
+
+After login, the CLI offers to create an API key and save it to `~/.sitectl/key` for sustained access.
+
+## whoami
+
+Use `whoami` to inspect the active identity and development access readiness:
+
+```bash
+sitectl libops whoami
+```
+
+The command reports OAuth/API-key state, account ID, email, GitHub username, LibOps SSH key count, and whether you still need to update your development config. For checkout and SSH workflows, your GitHub username must be set and the same SSH public key must be added to both GitHub and LibOps.
+
+Update your account profile from the CLI:
+
+```bash
+sitectl libops account update --github-username octocat
+sitectl libops account update --name "Ada Lovelace"
+```
+
+## API keys
+
+Create API keys for non-interactive access:
+
+```bash
+sitectl libops create apikey --name workstation --save
+sitectl libops create apikey --name ci --scopes organization:read,project:write
+sitectl libops list apikeys
+sitectl libops delete apikey "$API_KEY_ID" --yes
+```
+
+If a saved API key exists, LibOps commands use it before falling back to OAuth credentials.
+
+## SSH keys
+
+LibOps SSH access is account-scoped:
+
+```bash
+sitectl libops create ssh-key --name laptop --public-key-file ~/.ssh/id_ed25519.pub
+sitectl libops list ssh-keys
+sitectl libops delete ssh-key "$KEY_ID" --yes
+```
+
+The same public key must also be added to GitHub for repository checkout over SSH.
+
+## Logout
+
+```bash
+sitectl libops logout
+```
+
+`logout` removes both `~/.sitectl/oauth.json` and `~/.sitectl/key`.

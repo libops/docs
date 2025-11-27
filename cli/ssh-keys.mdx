@@ -1,0 +1,37 @@
+---
+title: 'SSH Keys'
+description: 'Manage LibOps SSH keys for your account'
+---
+
+SSH keys are attached to the authenticated LibOps account. You normally do not need to pass `--account-id`; the API defaults to your own account and rejects attempts to manage another user's keys.
+
+## Create
+
+```bash
+sitectl libops create ssh-key \
+  --name laptop \
+  --public-key-file ~/.ssh/id_ed25519.pub
+```
+
+You can also pass key content directly:
+
+```bash
+sitectl libops create ssh-key \
+  --name workstation \
+  --public-key "$(cat ~/.ssh/id_ed25519.pub)"
+```
+
+## List
+
+```bash
+sitectl libops list ssh-keys
+```
+
+## Delete
+
+```bash
+sitectl libops delete ssh-key "$KEY_ID"
+sitectl libops delete ssh-key "$KEY_ID" --yes
+```
+
+For repository checkout and environment SSH access, add the same public key to GitHub and LibOps.

@@ -1,0 +1,83 @@
+---
+title: "Slack Integration"
+description: "How to use the LibOps Task Agent directly from your Slack workspace"
+---
+
+The LibOps Slack integration lets team members work with the **LibOps Task Agent** without leaving Slack. You can request site changes, check environment status, and iterate on tasks through threaded conversations.
+
+## Connect Your Slack Workspace
+
+To enable the Slack integration for your institution:
+
+1. Open **Organization Settings** in your LibOps dashboard.
+2. Under **Integrations**, locate Slack and click **Install Slack App**.
+3. Follow the Slack prompts to authorize the LibOps app and grant the necessary permissions to your workspace.
+4. Once authorized, individual team members can link their LibOps accounts by running `/libops login` in Slack.
+
+<Note>
+  If your Slack Workspace Owner requires admin approval for new apps, ensure the LibOps app is approved before attempting installation.
+</Note>
+
+## Discovering Resources
+
+Before interacting with a site, you can use slash commands to discover the resources available to your account.
+
+- `/libops orgs`: List the organizations you belong to.
+- `/libops projects [org_uuid]`: List projects within a specific organization.
+- `/libops sites [project_uuid]`: List sites within a specific project.
+
+The site list includes a pre-formatted command for each environment, making it easy to initiate a task:
+
+```text
+- Main site `[site_uuid]` (production)
+  Run: `/libops chat [org_uuid] project [project_uuid] site [site_uuid] <request>`
+```
+
+## Using the LibOps Task Agent in Slack
+
+Once you have identified a site, you can assign it a task directly from any channel or direct message where the LibOps app is present.
+
+### Initiating a Task
+
+To start a new task, use the `/libops chat` command followed by the site identifiers and your request:
+
+```text
+/libops chat [org_uuid] project [project_uuid] site [site_id] Add a homepage alert banner that editors can toggle.
+```
+
+If your request is identified as a customization task, LibOps will:
+1. Provision or select an isolated **Preview Environment**.
+2. Deploy the **LibOps Task Agent** to implement the change on a dedicated branch.
+3. Open a **GitHub Pull Request** with the proposed implementation.
+4. Notify the Slack thread with links to the preview and the pull request.
+
+### Iterating via Threads
+
+The LibOps Task Agent supports threaded conversations. If you need to refine the implementation or ask a follow-up question:
+
+1. Reply directly to the agent's status message in the Slack thread.
+2. Include the `@libops` mention in your reply.
+3. The agent will process your feedback, update the implementation, and push a new commit to the pull request.
+
+## Tracking Progress in Real Time
+
+The agent provides live feedback within the Slack thread so you can monitor the status of your request:
+
+- **Status Updates:** A live-updating message shows the agent's current activity (e.g., searching files, implementation).
+- **Task Completion:** When the agent finishes, it posts a summary of the changes along with a link to the live preview environment and the GitHub pull request.
+- **Team review:** Other team members in the channel can see progress and participate in the review thread.
+
+## Roles and Permissions
+
+The agent's capabilities in Slack reflect the user's roles within the LibOps platform:
+
+- **Owners and Developers:** Can initiate coding tasks, request implementation changes, and trigger deployments.
+- **Viewers:** Can check status and participate in discussions but cannot initiate changes that modify the repository or environment.
+
+To manage team permissions, visit the **Members** page in your LibOps dashboard.
+
+## Best Practices
+
+- **Be specific:** The more detail you provide in your initial request, the more accurately the agent can implement the change.
+- **Use threads:** Keep follow-up requests within the same thread to maintain context for the agent.
+- **Review previews:** Always validate the implementation in the provided preview environment before approving the pull request for production.

@@ -1,0 +1,61 @@
+---
+title: "Getting a Site Ready to Publish"
+description: "Open a LibOps production site to public traffic"
+---
+
+A custom domain is only one part of publishing a site. On LibOps, site ingress is protected by IP-based firewall rules by default. Unless a visitor's IP is covered by an organization, project, or site firewall rule, the site is not reachable, even if DNS points at LibOps.
+
+Use this checklist when moving a production site from private review to public availability.
+
+## Publish Checklist
+
+1. **Confirm the production site**: Make sure you are working with the production site ID, not a development or staging site.
+2. **Deploy reviewed code and configuration**: Verify the production deployment has current repository changes, required secrets, and application settings.
+3. **Add the custom domain**: Attach the hostname in LibOps and point DNS at `customers.libops.site`. See [Custom Domains](/platform/custom-domains).
+4. **Open public firewall access**: Add a site firewall rule for any IPv4 address. Add IPv6 too if your production site should accept IPv6 traffic.
+5. **Verify from outside your allowed networks**: Test the public hostname from a network that is not already covered by office or VPN firewall rules.
+
+## Open Production Access
+
+For a public production site, add a site-level rule that allows any IPv4 address:
+
+```bash
+sitectl libops create firewall \
+  --site-id <production-site-id> \
+  --cidr "0.0.0.0/0" \
+  --name "public-production-web" \
+  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
+```
+
+If the production hostname should also accept IPv6 clients, add:
+
+```bash
+sitectl libops create firewall \
+  --site-id <production-site-id> \
+  --cidr "::/0" \
+  --name "public-production-ipv6" \
+  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
+```
+
+<Warning>
+Only add public CIDR rules to production sites that are ready to be public. Keep development, staging, preview, and administrative-only sites limited to office, VPN, or known operator IP ranges.
+</Warning>
+
+## Dashboard Path
+
+In the dashboard:
+
+1. Open the organization and project.
+2. Open the production site.
+3. Open the site's Firewall or Access section.
+4. Add a rule with CIDR `0.0.0.0/0` and description `Public production web traffic`.
+5. Add `::/0` only if the site should be reachable over IPv6.
+6. Save and wait for the site controller to apply the rule.
+
+## Final Checks
+
+- `sitectl libops list domains --site-id <production-site-id>` shows the expected hostname.
+- Public DNS resolves the hostname to `customers.libops.site`.
+- `sitectl libops list firewall --site-id <production-site-id>` includes `0.0.0.0/0` for public IPv4 traffic.
+- The site loads from an IP address that is not on your office or VPN allowlist.
+- Application-level settings, such as canonical URL or trusted host configuration, use the public hostname.

@@ -1,0 +1,29 @@
+---
+title: 'Email Delivery'
+description: 'How email delivery works on LibOps-managed sites'
+---
+
+LibOps-managed sites include access to a LibOps-managed SMTP relay. Application templates are configured to send outgoing mail to that relay by default, so basic site email can work without each site owner running their own mail server.
+
+This relay is provided as a courtesy. LibOps does not guarantee delivery of email sent through the platform relay.
+
+Email delivery depends on many systems outside the site itself, including recipient mail servers, spam filtering, domain reputation, DNS records, and bounce handling. The LibOps relay is intended for low-volume platform and application notifications. It should not be treated as a guaranteed transactional email service.
+
+## Recommended Setup
+
+Sites that depend on reliable email delivery should integrate with a third-party transactional email provider such as SendGrid, Postmark, Mailgun, or Amazon SES.
+
+Use a third-party provider for:
+
+- Password resets and account verification that must arrive reliably.
+- Order confirmations, receipts, workflow notices, or other business-critical email.
+- Newsletters, marketing mail, or bulk messages.
+- Domain-specific sender reputation, SPF, DKIM, DMARC, bounce processing, and delivery analytics.
+
+Where an application supports a provider API, prefer the API integration over plain SMTP. Provider APIs usually give better error reporting, delivery events, rate-limit handling, and account-level controls.
+
+## LibOps Relay
+
+For sites that do not configure a third-party provider, the application will send through the LibOps SMTP relay. This is useful for basic notifications and low-volume mail, but delivery may be delayed, rejected, filtered as spam, or blocked by the recipient's mail provider.
+
+If email delivery is important to your site, configure a dedicated email provider before launch.

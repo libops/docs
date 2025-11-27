@@ -1,0 +1,252 @@
+---
+title: 'Application Templates and Customization'
+description: 'How LibOps application templates, rollouts, updates, and local workflows fit together'
+---
+
+LibOps application templates are designed so a site can be used as-is, customized through LibOps, customized locally, or self-hosted on your own infrastructure without changing the deployment model. The same Docker Compose project runs on a laptop, in CI, on your own VM, and on LibOps-managed VMs.
+
+LibOps platform hosting is limited to LibOps-supported or LibOps-approved templates. Running unrelated workloads on LibOps-managed infrastructure is outside the service boundary and may result in suspension or account termination. See [Terms of Service](https://www.libops.io/terms/).
+
+## Supported Templates
+
+LibOps currently supports these template families:
+
+- Drupal
+- Islandora
+- WordPress
+- Open Journal Systems
+- Omeka Classic
+- Omeka S
+- ArchivesSpace
+
+## Choose your support level
+
+The templates provide value before you adopt the LibOps platform. Start with the level of support that matches your team.
+
+<CardGroup cols={3}>
+  <Card title="Self-host with Docker Compose" icon="docker">
+    Fork or copy the template, configure the environment, and run it with the standard Docker Compose CLI on hardware you control.
+  </Card>
+  <Card title="Use sitectl as the operator layer" icon="terminal">
+    Keep the same Compose project while adding saved contexts, app-aware plugin commands, service helpers, logs, and rollout workflows.
+  </Card>
+  <Card title="Run it on LibOps" icon="cloud">
+    Keep the same repository contract while LibOps manages hosting, firewall rules, Vault-backed secrets, previews, membership, and deployment workflows.
+  </Card>
+</CardGroup>
+
+The important boundary is the template repository. Application setup, local development, and rollout behavior stay visible in Git instead of being hidden in a platform-only deployment path.
+
+## Choose Your Path
+
+Most teams fit one of three patterns.
+
+### Never Customizing
+
+Use the template as a managed application. LibOps provisions the site, applies secrets and firewall rules, runs deployments, and keeps the platform maintenance path consistent for you.
+
+This path is best when you want a supported OJS, WordPress, Omeka, ArchivesSpace, Drupal, or Islandora site and do not need custom code.
+
+What you need to know:
+
+- Manage the site from the dashboard or `sitectl`.
+- Use LibOps support channels for application and platform work.
+- Renovate and LibOps maintenance workflows keep the template, containers, operating system packages, and platform integration moving forward.
+
+### Customizing Through GitHub and Previews
+
+Use the repository workflow when you want changes without losing the standard LibOps project structure. Your team can make configuration changes, small theme edits, plugin setup, content-model updates, or troubleshooting fixes in a branch, then validate the result through a live preview before production rollout.
+
+What you need to know:
+
+- Keep changes in the site repository.
+- Review the GitHub pull request before rollout.
+- Use the live preview environment attached to the branch to iterate before production deployment.
+- The site still uses the same `init`, `build`, `up`, `down`, and `rollout` concepts described below.
+
+### Customizing Locally
+
+Use local customization when your team wants direct Git access, local testing, or deeper application changes.
+
+This path is best for custom themes, plugins, modules, data migration work, application upgrades that need testing, or changes that should go through your own pull request process.
+
+Local developers should understand the Make targets and Compose conventions below.
+
+## Standard Project Pattern
+
+First-class LibOps application repositories use a common layout:
+
+- `docker-compose.yaml` is the default Compose file and should model production. Production should not rely on a Compose override file.
+- `docker-compose.override-example.yaml` is the committed example for local-only changes. Developers may copy it to `docker-compose.override.yml`, which should not be committed.
+- `scripts/rollout.sh` owns the application-specific deployment sequence.
+- `renovate.json5` keeps application and dependency updates flowing.
+- App traffic is routed through Traefik. Application containers stay internal and should not publish their own host ports.
+- Shared services are modeled as sitectl service plugins. LAMP templates use MariaDB by default; search-backed templates use Solr where the application ships with search enabled.
+
+The goal is local-to-production parity. A developer running `make up` from a fresh checkout should exercise the same services, networking, Traefik routing, volumes, and initialization behavior used on a LibOps host.
+
+See [Compose Project Catalog](/templates/compose-projects) for the current template paths and default service composition.
+
+## Buildkit and Template Boundary
+
+LibOps builds reusable application images in `libops/buildkit`. Those images are the building blocks:
+
+- `libops/drupal:php83` and `libops/drupal:php84` install Drupal from upstream `drupal/recommended-project`.
+- `libops/islandora:php83` and `libops/islandora:php84` extend Drupal with the Islandora starter site release.
+- `libops/wp`, `libops/ojs`, `libops/omeka-s`, and `libops/omeka-classic` follow the same PHP flavor pattern.
+- Each app image owns its nginx package, nginx service, and nginx configuration. There is no shared nginx application image to extend.
+- Buildkit image tests live beside the image, such as `images/ojs/tests`, and smoke-test that the app can install and answer HTTP against MariaDB.
+
+Template repositories are the customer-facing extension layer. Customers consume or fork the template, then keep their local changes in Git:
+
+- Composer-managed templates such as Drupal, Islandora, and WordPress start from the matching buildkit base image, copy local `composer.json` and `composer.lock`, run `composer install`, then copy local `rootfs` additions.
+- Omeka and OJS templates start from the matching buildkit base image and copy local plugin, module, or theme directories from `rootfs`.
+- Each template carries a local app Dockerfile so a fork can bring checked-in local modules, plugins, themes, config, or other modifications into the running workload.
+- Template Dockerfiles are structured for cache reuse: copy lockfiles and downloaded upstream inputs first, run package-manager installs or downloads with cache mounts, then copy the local customization paths.
+- Local image builds use the platform selected by the Docker CLI on the host and do not push images. Publishing image artifacts belongs in CI or another explicit release workflow.
+- LibOps base images provide default nginx and PHP configuration. When a site needs runtime tuning, prefer Compose environment values for limits and timeouts over replacing base image config in the template.
+- `docker-compose.override-example.yaml` provides local development bind mounts for app-specific extension paths, such as Drupal modules/themes, WordPress plugins/themes, OJS plugins, and Omeka modules/themes. The active local override file is `docker-compose.override.yml`.
+- Templates should not carry a `docker-compose.tls.yml`; production TLS and edge behavior are platform concerns.
+
+For local development, `sitectl compose up` may write an untracked `docker-compose.override.yml` to avoid host port conflicts. The tracked Compose file should publish the production ingress ports, usually `80:80` and, when the stack serves HTTPS directly, `443:443`. If production uses HTTPS and local development should match it, use mkcert-backed Traefik certificates rather than committing a TLS override.
+
+This split keeps upstream downloads, checksums, PHP flavors, nginx runtime config, and install smoke tests centralized in buildkit while still giving customer repositories a small, understandable customization surface.
+
+## Make Targets
+
+Every first-class LibOps application should expose the same top-level targets:
+
+```bash
+make init
+make build
+make up
+make down
+make lint
+make test
+make rollout
+```
+
+`make init` runs one-shot setup:
+
+```bash
+docker compose run --rm init
+```
+
+Use `init` for things that must be created or set when a new environment is created, such as generated secret files, initial database users, first-boot configuration, and install markers. Init must be idempotent. Running it again must not destroy existing data.
+
+`make build` prepares local images and dependencies. Templates with local Dockerfiles build them here; templates that only consume upstream images may use this as a thin wrapper around dependency pulling.
+
+`sitectl compose up` is the normal start command for plugin-managed application repositories. Core `sitectl` reads the app plugin's create metadata and checks declared init files, named volumes, and local images before starting the Compose project.
+
+When init is required, the plugin's `DockerComposeInit` command usually runs the template's one-shot `init` service:
+
+```bash
+docker compose --profile "${INIT_PROFILE:-none}" run --rm "${INIT_SERVICE:-init}"
+```
+
+Template repositories should not duplicate this decision logic in shell scripts. Declare required files in `InitArtifacts` and named Compose volumes in `InitVolumes` on the matching `sitectl-<app>` plugin.
+
+`make down` stops the Compose project for local development or maintenance.
+
+`make lint` runs code quality and style checks.
+
+`make test` executes the application-level test suite. To ensure full parity, LibOps templates are designed so that `make test` invokes the exact same steps locally as it does within our CI/CD pipelines.
+
+`make rollout` invokes:
+
+```bash
+./scripts/rollout.sh
+```
+
+When a rollout is triggered from the dashboard, API, or `sitectl deploy`, the platform runs the repository's rollout script on the site VM. When a developer is working locally, `make rollout` runs the same script.
+
+This keeps app-specific steps close to the application:
+
+- OJS can run `php tools/upgrade.php upgrade`.
+- WordPress can run `wp core update-db`.
+- Drupal can run database updates and cache rebuilds.
+- Other templates can add their own migrations, index rebuilds, cache clears, or service ordering rules.
+
+## LibOps Hosts
+
+LibOps deploys these templates using its infrastructure automation engine. The VM setup is intentionally generic: the platform prepares the host, checks out the repository, configures Docker Compose, and delegates application behavior back to the repository through the same Make and script entrypoints local developers use.
+
+That means the VM does not need special knowledge of OJS, WordPress, Omeka, ArchivesSpace, Drupal, or Islandora internals. The repository owns application setup and rollout sequencing.
+
+Container-Optimized OS images are intentionally minimal, so LibOps-managed hosts must provide the small set of host tools needed by these entrypoints, including `make`, Docker, Docker Compose, bash, and `jq`. For COS-based hosts, LibOps is evaluating a managed image build using Google's [cos/tools](https://cos.googlesource.com/cos/tools) repository and [COS Customizer](https://cos.googlesource.com/cos/tools/+/refs/heads/master/src/cmd/cos_customizer/) so required host tools can be present without adding per-boot installation drift.
+
+## sitectl and App Plugins
+
+`sitectl` gives operators a consistent way to work with local and remote site environments. The generic Compose wrapper remains available:
+
+```bash
+sitectl compose up
+sitectl compose down
+sitectl compose logs -f
+sitectl compose ps
+```
+
+Application plugins add the app-aware layer. For example:
+
+```bash
+sitectl ojs status
+sitectl ojs logs
+sitectl ojs rollout
+```
+
+Each first-class app plugin advertises its matching template repository and create spec, including the init and up commands used when a new site is created. Plugins should surface useful helpers for the application while preserving the shared lifecycle concepts: initialize, build, start, stop, inspect, and rollout.
+
+Service plugins carry cross-application operations. For example, MariaDB backup behavior belongs to `sitectl-mariadb`, so OJS, WordPress, Drupal, Omeka, ArchivesSpace, and other MariaDB-backed contexts can use the same command instead of each app owning its own database dump wrapper.
+
+## Rollouts
+
+In LibOps, a rollout moves a repository and its containers to a new running version.
+
+The LibOps API stores each template's rollout command as:
+
+```bash
+./scripts/rollout.sh
+```
+
+When a rollout is triggered from the dashboard, API, or `sitectl deploy`, the platform runs the repository's rollout script on the site VM. When a developer is working locally, `make rollout` runs the same script.
+
+This keeps app-specific steps close to the application:
+
+- OJS can run `php tools/upgrade.php upgrade`.
+- WordPress can run `wp core update-db`.
+- Drupal can run database updates and cache rebuilds.
+- Other templates can add their own migrations, index rebuilds, cache clears, or service ordering rules.
+
+## Renovate and Updates
+
+LibOps templates use Renovate to keep the whole site supply chain current.
+
+Renovate watches and proposes updates for:
+
+- Core application versions, such as Drupal, OJS, WordPress, Omeka, and ArchivesSpace.
+- Application dependencies, including plugins, themes, Composer packages, npm packages, Go modules, and other package-manager dependencies.
+- Docker images used by Compose and Dockerfiles.
+- Base image operating system packages and libraries when the image build exposes them to Renovate.
+- LibOps platform packages, sitectl plugins, platform infrastructure references, and shared template conventions.
+
+For teams that never customize, LibOps manages this update stream as part of platform maintenance. For teams customizing locally, keep Renovate enabled in the customer repository so your fork continues to receive upstream security and compatibility updates.
+
+Renovate updates should still roll through the normal rollout path. The automation keeps changes visible and repeatable; the template's rollout script is what applies the tested version to a running site.
+
+## Adding a New App
+
+New first-class application support must be coordinated with LibOps before the workload runs on the platform. The template should follow the same contract:
+
+1. Add a buildkit image under `buildkit/images/<app>` with PHP 8.3 and PHP 8.4 targets when the app is PHP-based.
+2. Put upstream downloads, SHA updates, nginx install/config, and basic install smoke tests in buildkit.
+3. Create a template repository with `docker-compose.yaml`, `docker-compose.override-example.yaml`, `Makefile`, `scripts/rollout.sh`, and `renovate.json5`.
+4. Make the template Dockerfile extend the buildkit image and copy only local extension inputs.
+5. Define `init` as a one-shot service for first-environment setup.
+6. Define `make build`, `make up`, `make down`, and `make rollout`.
+7. Route all external traffic through Traefik and use MariaDB for LAMP application databases.
+8. Keep production as the tracked Compose behavior and put local-only bind mounts in `docker-compose.override-example.yaml`; active developer overrides belong in untracked `docker-compose.override.yml`.
+9. Add host-relay SMTP defaults.
+10. Add the template to the LibOps API registry with `InitCmd`, `UpCmd`, and `RolloutCmd`.
+11. Create a matching `sitectl-<app>` plugin with status, logs, and rollout helpers.
+12. Add Renovate support for the application, containers, package managers, and LibOps references.
+13. Test local `make up`, `make down`, and `make rollout` before publishing.

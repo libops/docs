@@ -1,0 +1,12 @@
+### Task Agent changes with staff review
+
+The **LibOps Task Agent** does the technical work. Your team reviews every change:
+
+*   **Site managers** start from plain text in the Dashboard or Slack.
+*   **The Task Agent** implements the change on a task branch and deploys it to an isolated preview environment.
+*   **Engineers** review the diff in a standard GitHub pull request, including code, configuration, and dependencies.
+*   **Site managers** validate the live preview before the change merges to production.
+
+Every change is transparent, reviewable, and tied to the GitHub workflow your team already knows.
+
+The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported. They run inside your organization's infrastructure on the LibOps-managed platform, with access limited to members of your organization. LibOps evaluates new open weight models as they become available.

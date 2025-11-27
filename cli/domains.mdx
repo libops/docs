@@ -1,0 +1,41 @@
+---
+title: 'Domains'
+description: 'Manage custom domains for LibOps Sites'
+---
+
+Custom domains attach hostnames to dashboard Sites.
+
+## Create
+
+```bash
+sitectl libops create domain \
+  --site-id "$SITE_ID" \
+  --domain collections.example.edu
+```
+
+Optional edge controls:
+
+```bash
+sitectl libops create domain \
+  --site-id "$SITE_ID" \
+  --domain collections.example.edu \
+  --tier standard \
+  --status pending \
+  --edge-action allow \
+  --success-log-sample-rate 0.1
+```
+
+## List
+
+```bash
+sitectl libops list domains --site-id "$SITE_ID"
+```
+
+## Delete
+
+```bash
+sitectl libops delete domain collections.example.edu --site-id "$SITE_ID"
+sitectl libops delete domain collections.example.edu --site-id "$SITE_ID" --yes
+```
+
+Customer hostnames should CNAME to the LibOps SaaS target provided by the platform, not directly to a VM or internal router.

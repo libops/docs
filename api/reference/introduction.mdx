@@ -1,0 +1,55 @@
+---
+title: 'Introduction'
+description: 'LibOps API Reference'
+---
+
+## Welcome
+
+The LibOps API gives teams programmatic access to the platform. It is the same operational model exposed through the dashboard and `sitectl`, available for automation, governance, reporting, and integration work.
+
+Use the API to manage:
+
+- Organizations.
+- Projects.
+- Sites.
+- Settings.
+- Secrets.
+- Firewall rules.
+- Members.
+- SSH keys.
+- API keys.
+- Deployment and site status operations.
+
+<Card
+  title="OpenAPI Specification"
+  icon="code"
+  href="/api/reference/openapi.yaml"
+>
+  View the full OpenAPI specification file.
+</Card>
+
+## Why It Matters
+
+LibOps is designed to make open-source application operations repeatable. A full API means the platform can fit into your existing institutional workflows instead of forcing every task through a UI.
+
+Teams can connect LibOps to internal provisioning flows, service catalogs, access reviews, reporting tools, or custom automation while preserving the same organization, project, site, secret, firewall, member, and deployment model.
+
+## Authentication
+
+All API requests must be authenticated using a Bearer token. You can generate an API key from your account settings or via `sitectl`.
+
+```bash
+Authorization: Bearer <your_api_key>
+```
+
+## Base URL
+
+The base URL for the API is:
+
+```text
+https://api.libops.io/v1
+```
+
+## Response Format
+
+All responses are returned in JSON format.

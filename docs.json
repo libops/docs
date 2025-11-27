@@ -1,0 +1,384 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "LibOps",
+  "colors": {
+    "primary": "#16A34A",
+    "light": "#07C983",
+    "dark": "#15803D"
+  },
+  "favicon": "/favicon.ico",
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Create a site",
+          "icon": "gauge",
+          "href": "https://dash.libops.io"
+        },
+        {
+          "anchor": "Contact",
+          "icon": "envelope",
+          "href": "https://www.libops.io/contact/"
+        }
+      ]
+    },
+    "tabs": [
+      {
+        "tab": "Home",
+        "icon": "house",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index",
+              "quickstart",
+              "platform/resource-hierarchy"
+            ]
+          },
+          {
+            "group": "For Deans & Directors",
+            "pages": [
+              "platform/managed-platform",
+              "platform/open-source-adoption",
+              "platform/customization",
+              "platform/slack"
+            ]
+          },
+          {
+            "group": "For Librarians & Site Managers",
+            "pages": [
+              "platform/site-manager-guide",
+              "templates/islandora",
+              "templates/ojs",
+              "platform/getting-site-ready-to-publish",
+              "platform/custom-domains",
+              "platform/email"
+            ]
+          },
+          {
+            "group": "For Technical Staff",
+            "pages": [
+              "platform/engineer-guide",
+              "platform/why-docker-compose",
+              "templates/compose-projects",
+              "templates/app-support",
+              {
+                "group": "Security & Governance",
+                "pages": [
+                  "platform/security-operations"
+                ]
+              },
+              "platform/api-cli",
+              "platform/github",
+              "platform/automation-backplane"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI reference",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "cli/introduction",
+              "cli/authentication"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "cli/contexts",
+              "cli/configuration"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/compose",
+              "cli/port-forwarding"
+            ]
+          },
+          {
+            "group": "Resource Management",
+            "pages": [
+              "cli/organizations",
+              "cli/projects",
+              "cli/sites",
+              "cli/environments",
+              "cli/domains",
+              "cli/settings",
+              "cli/secrets",
+              "cli/firewall",
+              "cli/members"
+            ]
+          },
+          {
+            "group": "Account Management",
+            "pages": [
+              "cli/ssh-keys",
+              "cli/api-keys"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "API documentation",
+            "pages": [
+              "api/reference/introduction"
+            ]
+          },
+          {
+            "group": "Organizations",
+            "pages": [
+              "api/reference/create_organization",
+              "api/reference/delete_organization",
+              "api/reference/get_organization",
+              "api/reference/list_organization_projects",
+              "api/reference/list_organizations",
+              "api/reference/update_organization"
+            ]
+          },
+          {
+            "group": "Projects",
+            "pages": [
+              "api/reference/create_project",
+              "api/reference/delete_project",
+              "api/reference/get_project",
+              "api/reference/list_project_sites",
+              "api/reference/list_projects",
+              "api/reference/update_project"
+            ]
+          },
+          {
+            "group": "Sites",
+            "pages": [
+              "api/reference/create_site",
+              "api/reference/delete_site",
+              "api/reference/get_site",
+              "api/reference/list_sites",
+              "api/reference/update_site"
+            ]
+          },
+          {
+            "group": "Domains",
+            "pages": [
+              "api/reference/create_site_domain",
+              "api/reference/delete_site_domain",
+              "api/reference/list_site_domains"
+            ]
+          },
+          {
+            "group": "Settings",
+            "pages": [
+              {
+                "group": "Organization Settings",
+                "pages": [
+                  "api/reference/create_organization_setting",
+                  "api/reference/delete_organization_setting",
+                  "api/reference/get_organization_setting",
+                  "api/reference/list_organization_settings",
+                  "api/reference/update_organization_setting"
+                ]
+              },
+              {
+                "group": "Project Settings",
+                "pages": [
+                  "api/reference/create_project_setting",
+                  "api/reference/delete_project_setting",
+                  "api/reference/get_project_setting",
+                  "api/reference/list_project_settings",
+                  "api/reference/update_project_setting"
+                ]
+              },
+              {
+                "group": "Site Settings",
+                "pages": [
+                  "api/reference/create_site_setting",
+                  "api/reference/delete_site_setting",
+                  "api/reference/get_site_setting",
+                  "api/reference/list_site_settings",
+                  "api/reference/update_site_setting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Firewall",
+            "pages": [
+              {
+                "group": "Organization Firewall",
+                "pages": [
+                  "api/reference/create_organization_firewall_rule",
+                  "api/reference/delete_organization_firewall_rule",
+                  "api/reference/list_organization_firewall_rules"
+                ]
+              },
+              {
+                "group": "Project Firewall",
+                "pages": [
+                  "api/reference/create_project_firewall_rule",
+                  "api/reference/delete_project_firewall_rule",
+                  "api/reference/list_project_firewall_rules"
+                ]
+              },
+              {
+                "group": "Site Firewall",
+                "pages": [
+                  "api/reference/create_site_firewall_rule",
+                  "api/reference/delete_site_firewall_rule",
+                  "api/reference/list_site_firewall_rules"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Members",
+            "pages": [
+              {
+                "group": "Organization Members",
+                "pages": [
+                  "api/reference/create_organization_member",
+                  "api/reference/delete_organization_member",
+                  "api/reference/list_organization_members",
+                  "api/reference/update_organization_member"
+                ]
+              },
+              {
+                "group": "Project Members",
+                "pages": [
+                  "api/reference/create_project_member",
+                  "api/reference/delete_project_member",
+                  "api/reference/list_project_members",
+                  "api/reference/update_project_member"
+                ]
+              },
+              {
+                "group": "Site Members",
+                "pages": [
+                  "api/reference/create_site_member",
+                  "api/reference/delete_site_member",
+                  "api/reference/list_site_members",
+                  "api/reference/update_site_member"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secrets",
+            "pages": [
+              {
+                "group": "Organization Secrets",
+                "pages": [
+                  "api/reference/create_organization_secret",
+                  "api/reference/delete_organization_secret",
+                  "api/reference/get_organization_secret",
+                  "api/reference/list_organization_secrets",
+                  "api/reference/update_organization_secret"
+                ]
+              },
+              {
+                "group": "Project Secrets",
+                "pages": [
+                  "api/reference/create_project_secret",
+                  "api/reference/delete_project_secret",
+                  "api/reference/get_project_secret",
+                  "api/reference/list_project_secrets",
+                  "api/reference/update_project_secret"
+                ]
+              },
+              {
+                "group": "Site Secrets",
+                "pages": [
+                  "api/reference/create_site_secret",
+                  "api/reference/delete_site_secret",
+                  "api/reference/get_site_secret",
+                  "api/reference/list_site_secrets",
+                  "api/reference/update_site_secret"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "SSH Keys",
+            "pages": [
+              "api/reference/create_ssh_key",
+              "api/reference/delete_ssh_key",
+              "api/reference/list_ssh_keys"
+            ]
+          },
+          {
+            "group": "Site Operations",
+            "pages": [
+              "api/reference/deploy_site",
+              "api/reference/get_site_status"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "api/reference/get_operation"
+            ]
+          },
+          {
+            "group": "Account",
+            "pages": [
+              "api/reference/create_api_key",
+              "api/reference/get_account_by_email",
+              "api/reference/list_api_keys",
+              "api/reference/revoke_api_key"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Terraform Provider",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "terraform/coming-soon"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/libops-light.png",
+    "dark": "/logo/libops-dark.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Contact",
+        "href": "https://www.libops.io/contact/"
+      },
+      {
+        "label": "Terms",
+        "href": "https://www.libops.io/terms/"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Create a site",
+      "href": "https://dash.libops.io"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/libraryops",
+      "github": "https://github.com/libops",
+      "linkedin": "https://linkedin.com/company/libops"
+    }
+  }
+}

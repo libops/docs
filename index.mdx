@@ -1,0 +1,78 @@
+---
+title: "Welcome to the LibOps docs"
+description: "Reference documentation, guides, and API/CLI references for the LibOps platform"
+mode: "wide"
+---
+
+These docs cover LibOps application templates, `sitectl`, and the managed LibOps platform. They are for institutions that need a clear way to run open-source applications, whether they host those applications themselves or ask LibOps to manage the platform around them.
+
+## Choose the level of support you need
+
+LibOps starts with portable Docker Compose templates that can run on a laptop, a campus server, a single VM, or LibOps-managed infrastructure. Use the part that helps your team now, then add more support when the operational burden grows.
+
+<CardGroup cols={3}>
+  <Card title="Run the template yourself" icon="docker" href="/templates/app-support">
+    Clone or fork a supported template and deploy it with Docker Compose on hardware you control.
+  </Card>
+  <Card title="Add sitectl" icon="terminal" href="/cli/introduction">
+    Keep Compose underneath while adding contexts, app-aware commands, logs, rollouts, and service helpers.
+  </Card>
+  <Card title="Use the managed platform" icon="cloud" href="/platform/managed-platform">
+    Let LibOps handle hosting, firewall rules, Vault-backed secrets, preview environments, membership, and support.
+  </Card>
+</CardGroup>
+
+## Start here
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first organization, project, and site.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/introduction">
+    Manage sites and local environments with `sitectl`.
+  </Card>
+  <Card title="API reference" icon="code" href="/api/reference/introduction">
+    Automate LibOps operations from your own systems.
+  </Card>
+  <Card title="Terms of Service" icon="file-signature" href="https://www.libops.io/terms/">
+    Beta availability, service boundaries, and supported workloads.
+  </Card>
+</CardGroup>
+
+## By role
+
+<CardGroup cols={3}>
+  <Card title="Deans & Directors" icon="building-columns" href="/platform/managed-platform">
+    Strategic value, operational risk, and sustainable open-source adoption.
+  </Card>
+  <Card title="Librarians & Site Managers" icon="gauge" href="/platform/site-manager-guide">
+    Day-to-day site management via the Dashboard, supported templates, firewall rules, and launch workflows.
+  </Card>
+  <Card title="Technical Staff" icon="terminal" href="/platform/engineer-guide">
+    GitHub-centric workflows, Docker Compose parity, and API integration.
+  </Card>
+</CardGroup>
+
+## Platform topics
+
+<CardGroup cols={2}>
+  <Card title="Managed platform" icon="cloud" href="/platform/managed-platform">
+    Secure compute, single-tenant sites, and repeatable production hosting.
+  </Card>
+  <Card title="Security & operations" icon="shield" href="/platform/security-operations">
+    Ingress, secrets, updates, and role-based access control.
+  </Card>
+  <Card title="Customization" icon="code" href="/platform/customization">
+    GitHub integration, repository-backed changes, and managed customization workflows.
+  </Card>
+  <Card title="Automation backplane" icon="webhook" href="/platform/automation-backplane">
+    Webhook-driven CI/CD, scanning, and self-hosted runners.
+  </Card>
+  <Card title="API and sitectl" icon="terminal" href="/platform/api-cli">
+    Integrating LibOps into existing technical workflows.
+  </Card>
+</CardGroup>
+
+<Note>
+LibOps is currently in **Beta** and serves GLAM institutions, colleges, and universities in the United States and Canada. Review the [Terms of Service](https://www.libops.io/terms/) for details on supported workloads and availability.
+</Note>

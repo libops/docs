@@ -1,0 +1,106 @@
+---
+title: "Site Manager Guide"
+description: "Oversee LibOps sites via the dashboard, Slack, and supported application templates"
+---
+
+This guide is for librarians, archivists, publishers, collection managers, curators, and other institutional staff who are responsible for site operations but don't need day-to-day terminal access.
+
+<Info>
+**What you can do from the Dashboard:** launch new sites, manage team access, lock down access with firewall rules, review preview environments, and coordinate your production launch. No terminal. No deep technical expertise required.
+</Info>
+
+LibOps templates are also useful to institutions that are not ready for managed hosting. Your technical team can run the same supported Docker Compose templates on local infrastructure first, then add `sitectl` or the managed LibOps platform when they want dashboard workflows, previews, firewall management, membership, and support built around the site.
+
+## Key management areas
+
+You primarily interact with LibOps through the hosted dashboard and, if configured, Slack.
+
+<CardGroup cols={2}>
+  <Card title="Provision supported sites" icon="boxes-stacked" href="/templates/app-support">
+    Launch sites from professionally maintained templates for Islandora, OJS, Drupal, WordPress, Omeka, and ArchivesSpace directly from the web UI.
+  </Card>
+  <Card title="Access & security control" icon="shield" href="/platform/security-operations">
+    Manage firewall rules and member permissions in the dashboard to keep your site private until you're ready to launch.
+  </Card>
+  <Card title="Production launch coordination" icon="globe" href="/platform/getting-site-ready-to-publish">
+    Configure custom domains and verify production readiness before opening the site to the public.
+  </Card>
+</CardGroup>
+
+## Provisioning a new open-source site
+
+Most site management workflows begin in the Dashboard.
+
+<Steps>
+  <Step title="Pick the organization and project" icon="folder-tree">
+    Identify the institutional organization and project that should own the new site.
+  </Step>
+  <Step title="Create the site" icon="circle-plus">
+    Select **Create site** and choose one of the supported application templates.
+  </Step>
+  <Step title="Configure the repository" icon="github">
+    Decide whether LibOps should manage the site's repository or connect to your own GitHub organization.
+  </Step>
+  <Step title="Set up the environment" icon="gear">
+    Name the site, choose its purpose (production, staging, etc.), and set the intended hostname.
+  </Step>
+  <Step title="Review and launch" icon="check">
+    Confirm the generated configuration, including repository, access, and hostnames, then finalize the site.
+  </Step>
+</Steps>
+
+<Warning>
+LibOps only supports workloads based on the documented templates. Running other applications on managed infrastructure is not permitted. See the [Terms of Service](https://www.libops.io/terms/) for details.
+</Warning>
+
+## Managing site privacy and launch
+
+By default, every LibOps site is protected by an IP allowlist. Development, staging, and preview environments are only reachable by authorized staff and reviewers until you decide to publish.
+
+When you're ready to take a production site public, use the Dashboard to:
+
+<Steps>
+  <Step title="Verify production state" icon="clipboard-check">
+    Confirm the production environment reflects all approved changes.
+  </Step>
+  <Step title="Configure the domain" icon="globe">
+    Add the custom domain and verify the application's hostname settings.
+  </Step>
+  <Step title="Open public access" icon="door-open">
+    Adjust the firewall rules to allow public traffic only after the site is approved for launch.
+  </Step>
+</Steps>
+
+For a complete pre-launch checklist, see [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish).
+
+## Collaborating with technical teams
+
+LibOps reduces the need for deep infrastructure expertise, but some changes still benefit from technical review. Bring in your engineers or LibOps support when a task involves:
+
+<CardGroup cols={3}>
+  <Card title="Security & compliance" icon="shield-halved">
+    Changes affecting authentication, privacy, or data export.
+  </Card>
+  <Card title="Core architecture" icon="diagram-project">
+    Significant data model changes or large-scale migrations.
+  </Card>
+  <Card title="Third-party integrations" icon="plug">
+    Services that require privileged access into your stack.
+  </Card>
+</CardGroup>
+
+The platform's collaborative review model is the same in both cases: you validate the functional behavior in the preview environment; technical staff inspect the underlying implementation in GitHub.
+
+## Related documentation
+
+<CardGroup cols={2}>
+  <Card title="Application templates" icon="boxes-stacked" href="/templates/app-support">
+    A detailed look at the application stacks and patterns LibOps supports.
+  </Card>
+  <Card title="Custom domain management" icon="globe" href="/platform/custom-domains">
+    Add and verify public hostnames for your sites.
+  </Card>
+  <Card title="Security & governance" icon="shield" href="/platform/security-operations">
+    Ingress protection, secrets, and role-based access control.
+  </Card>
+</CardGroup>

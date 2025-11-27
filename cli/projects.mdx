@@ -1,0 +1,45 @@
+---
+title: 'Projects'
+description: 'Manage LibOps projects from sitectl'
+---
+
+The dashboard calls these records **Projects**. A project groups related dashboard Sites under an organization.
+
+## Create
+
+```bash
+sitectl libops create project \
+  --organization-id "$ORGANIZATION_ID" \
+  --name "Digital Collections" \
+  --region us-central1 \
+  --zone us-central1-f \
+  --machine-type e2-standard-2 \
+  --disk-size-gb 20
+```
+
+Use `--create-branch-sites` when LibOps should create site records for new branches.
+
+## List and get
+
+```bash
+sitectl libops list projects
+sitectl libops list projects --organization-id "$ORGANIZATION_ID"
+sitectl libops get project "$PROJECT_ID"
+```
+
+## Edit and delete
+
+```bash
+sitectl libops edit project "$PROJECT_ID" --name "Public Collections"
+sitectl libops edit project "$PROJECT_ID" --machine-type e2-standard-4 --disk-size-gb 50
+sitectl libops delete project "$PROJECT_ID" --yes
+```
+
+## Project-scoped controls
+
+```bash
+sitectl libops create member --project-id "$PROJECT_ID" --account-id "$ACCOUNT_ID" --role developer
+sitectl libops create firewall --project-id "$PROJECT_ID" --name vpn --cidr 198.51.100.0/24
+sitectl libops create secret --project-id "$PROJECT_ID" --name SHARED_API_KEY --value "$API_KEY"
+sitectl libops create setting --project-id "$PROJECT_ID" --key default_locale --value en
+```

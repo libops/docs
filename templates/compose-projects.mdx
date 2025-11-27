@@ -1,0 +1,51 @@
+---
+title: 'Compose Project Catalog'
+description: 'Supported LibOps Docker Compose projects, default service composition, and sitectl plugin ownership'
+---
+
+LibOps templates use Docker Compose as the workload definition. You can operate the template directly with the Docker Compose CLI. `sitectl` adds saved contexts, app-specific commands, and reusable service behavior when teams want a more consistent operator interface.
+
+## Platform rules
+
+- Web applications route through Traefik.
+- LAMP applications use MariaDB by default.
+- Search-backed defaults are explicit: Drupal and ArchivesSpace ship with Solr enabled.
+- Shared services are owned by service plugins, not copied independently into every application plugin.
+- Standalone application compose projects own app-specific wiring such as `depends_on`, environment variables, volumes, and rollout helpers.
+- Generated secrets, local `.env` files, local certificates, vendored dependency trees, and build caches stay out of release artifacts.
+
+## Application projects
+
+| Application | sitectl plugin | Compose project path | Default services |
+|---|---|---|---|
+| ArchivesSpace | `sitectl-archivesspace` | `./archivesspace` | ArchivesSpace, Traefik, MariaDB, Solr |
+| Drupal | `sitectl-drupal` | `./drupal` | Drupal, Traefik, MariaDB, Solr |
+| Islandora | `sitectl-isle` | chosen during create | Drupal/Islandora stack with MariaDB, Solr, Traefik, Fedora, Blazegraph, and IIIF services |
+| Open Journal Systems | `sitectl-ojs` | `./ojs` | OJS, Traefik, MariaDB |
+| Omeka Classic | `sitectl-omeka-classic` | `./omeka-classic` | Omeka Classic, Traefik, MariaDB |
+| Omeka S | `sitectl-omeka-s` | `./omeka-s` | Omeka S, Traefik, MariaDB |
+| WordPress | `sitectl-wp` | `./wp` | WordPress, Traefik, MariaDB |
+
+The app plugin repositories do not carry embedded copies of these compose projects. The create flow clones the matching standalone template repository and places it at the listed default path.
+
+Triplet is the exception. Triplet has its own application source repository, including `deploy/compose/docker-compose.yaml`. `sitectl-triplet` owns the reusable Triplet service component rather than duplicating the full Triplet source tree.
+
+## Operator pattern
+
+Start with the app plugin for application work:
+
+```bash
+sitectl wp rollout
+sitectl ojs scheduled-tasks
+sitectl drupal drush cr
+```
+
+Use service plugins for shared operations:
+
+```bash
+sitectl mariadb backup --output backups/site.sql
+sitectl component describe traefik
+sitectl set solr disabled
+```
+
+This keeps operational behavior composable. The application plugin owns what makes the app different; the service plugin owns behavior that should be consistent across every app using that service.

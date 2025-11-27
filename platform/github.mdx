@@ -1,0 +1,89 @@
+---
+title: 'GitHub Integration'
+description: 'How LibOps uses GitHub repositories, the LibOps GitHub App, and managed site templates'
+---
+
+LibOps uses GitHub repositories as the source of truth for site code, deployment configuration, branches, and pull requests. A site can use a LibOps-managed repository by default, or it can use a repository in your own GitHub organization after you install the LibOps GitHub App.
+
+## Repository Options
+
+### LibOps Managed
+
+LibOps Managed is the default option when creating a site. It does not require the customer to create a GitHub account or install anything in their own GitHub organization.
+
+When you choose LibOps Managed, LibOps copies the selected template into a private repository in a LibOps-managed GitHub organization. The site is connected to that repository, and LibOps uses it for deployments, preview environments, branches, and pull requests.
+
+Use LibOps Managed when:
+
+- You want LibOps to own the repository operations for the site.
+- Your team does not already have a GitHub organization for this site.
+- You want the fastest path from template selection to a running site.
+
+### Customer GitHub Organization
+
+Use a customer-owned GitHub organization when your team wants to keep the site repository under its own GitHub org, use its own review process, or connect existing development workflows.
+
+To connect a customer-owned repository:
+
+1. A GitHub organization owner or app manager opens the LibOps GitHub App installation link from the LibOps dashboard.
+2. Select the GitHub organization that should own the site repository.
+3. Grant the LibOps app access to the selected site repository, or to all repositories if your organization prefers that model.
+4. Return to LibOps and connect the GitHub organization. LibOps stores the GitHub App installation ID for that GitHub repository owner.
+5. Create the site with the customer repository URL, or choose a supported template and have LibOps create the repository in your organization when that workflow is available.
+
+### GitHub App Permissions
+
+GitHub shows the requested repository access and permissions during app installation. The exact install screen can change as LibOps features evolve, but these are the permissions you should expect to approve for the LibOps GitHub App:
+
+| GitHub permission | Access | Why LibOps uses it |
+| --- | --- | --- |
+| Repository access | Selected repositories or all repositories | Selected repositories is enough when LibOps works only with existing site repositories you choose. All repositories, or the equivalent repository-creation access shown by GitHub, is needed when LibOps should create new site repositories in your organization over time. |
+| Metadata | Read | Required by GitHub Apps and used by LibOps to identify repositories, owners, and installations. |
+| Contents | Read and write | Clones and pulls site code for deployments, writes managed repository updates when enabled, and copies approved templates into new site repositories when repository creation is enabled. |
+| Pull requests | Read and write | Opens and updates platform-managed pull requests, reads pull request branch context, and reports review or preview status. |
+| Issues | Read and write | GitHub exposes pull request conversation comments through the issues API. LibOps uses this to post addressed-in-commit acknowledgements back to pull requests after reviewer feedback is handled. |
+| Checks | Read and write | Reports LibOps automation status on GitHub commits when the platform handles repository push events. |
+| Deployments | Read and write | Creates and updates GitHub deployment statuses for site deploys started from repository events. |
+| Administration or repository collaborators | Write, only when enabled | Creates or manages LibOps site repositories and syncs LibOps organization, project, and site membership to GitHub repository collaborators. |
+
+If the app is limited to selected repositories, LibOps can work only with those repositories. Add every site repository that should use LibOps deployments, pull requests, preview environments, or repository maintenance automation. If you want LibOps to create new site repositories inside your GitHub organization, the installation must allow repository creation for that organization.
+
+Permissions marked as conditional are only needed for installations that use those features. For example, repository collaborator management is required only when LibOps member-to-repository sync is enabled.
+
+One LibOps organization can connect repositories from more than one GitHub organization. LibOps stores each GitHub App installation ID by GitHub repository owner and chooses the installation that owns the repository for deployments, pull requests, collaborator sync, and automated webhook follow-up.
+
+## Supported Templates
+
+LibOps site creation supports these template repositories:
+
+- [Drupal](https://github.com/libops/drupal)
+- [Islandora](https://github.com/libops/isle)
+- [WordPress](https://github.com/libops/wp)
+- [Open Journal Systems](https://github.com/libops/ojs)
+- [Omeka Classic](https://github.com/libops/omeka-classic)
+- [Omeka S](https://github.com/libops/omeka-s)
+- [ArchivesSpace](https://github.com/libops/archivesspace)
+
+For LibOps Managed sites, these templates are copied into private site repositories. For customer-owned repositories, they provide the starting project shape that LibOps expects for deployment and preview automation.
+
+## Preview Environments and Pull Requests
+
+Application changes should run against a development or ephemeral preview environment, not against production directly. When a branch or pull request is ready for review, LibOps can create or select a live preview environment for the site.
+
+The preview environment gives internal stakeholders a running site where they can review the change, test workflows, validate content, and complete quality assurance before production changes move forward.
+
+Production changes should only move forward after the pull request is reviewed by a subject matter expert for that project and the preview environment has been accepted by the people responsible for the site.
+
+## Repository Member Sync
+
+When a LibOps account has a GitHub username, LibOps membership changes update the relevant GitHub repository collaborators. Organization membership applies to the organization's site repositories, project membership applies to that project's site repositories, and site membership applies to that site's repository. If multiple sites point at the same repository, LibOps keeps the highest effective permission for that user.
+
+Manual GitHub collaborator changes can diverge from LibOps membership and may be overwritten by the next LibOps membership update. For customer-owned repositories, the LibOps GitHub App installation must include the repository permissions required to manage collaborators.
+
+## Token Handling
+
+The LibOps GitHub App private key is stored in the LibOps API Vault. Site VMs never receive the app private key.
+
+When platform automation needs GitHub access, the LibOps API mints a short-lived GitHub App installation token for the relevant installation. Requests are validated against the site repository and required permissions before a token is returned. Tokens are used at runtime and are not written into repository config.
+
+For LibOps Managed sites, the token comes from the LibOps app installation on the platform's managed GitHub organization. For customer-owned repositories, the token comes from the app installation for the GitHub owner that owns the repository. LibOps does not use personal access tokens for repository mutation.
