@@ -1,0 +1,208 @@
+---
+title: 'Authentication'
+description: 'Authenticate with the LibOps API'
+---
+
+## Overview
+
+sitectl provides built-in authentication with the LibOps API supporting both OAuth (Google) and email/password authentication.
+
+## Login
+
+Authenticate with the LibOps API using your browser:
+
+```bash
+sitectl login
+```
+
+This command will:
+1. Open your default web browser
+2. Present authentication options (Google OAuth or email/password)
+3. Redirect back to sitectl after successful authentication
+4. Store credentials locally in `~/.sitectl/oauth.json`
+5. Optionally create an API key for future authentication
+
+### Login Options
+
+```bash
+# Login with custom API URL
+sitectl login --api-url https://api.example.com
+
+# Login with custom timeout (default: 5 minutes)
+sitectl login --timeout 10m
+```
+
+## API Keys
+
+After logging in, sitectl will prompt you to create an API key. API keys provide a more convenient authentication method for CLI usage.
+
+### Benefits of API Keys
+
+- No need to re-authenticate frequently
+- Can be revoked without changing your password
+- Specific to sitectl usage
+- Stored locally in `~/.sitectl/key`
+
+### Create API Key Manually
+
+```bash
+sitectl create apikey \
+  --name "my-workstation" \
+  --description "API key for development machine"
+```
+
+### List API Keys
+
+```bash
+sitectl list apikeys
+```
+
+### Delete API Key
+
+```bash
+sitectl delete apikey <key-id>
+```
+
+## Check Authentication Status
+
+View your current authentication status and token information:
+
+```bash
+sitectl whoami
+```
+
+Output example:
+```
+Authentication Status: ✓ Authenticated
+Token Type: Bearer
+Token Expires: Mon, 15 Jan 2024 14:30:00 UTC
+Time Until Expiry: 6h 30m
+Credentials stored at: /home/user/.sitectl/oauth.json
+```
+
+## Logout
+
+Remove local authentication credentials:
+
+```bash
+sitectl logout
+```
+
+This command removes:
+- OAuth tokens from `~/.sitectl/oauth.json`
+- API key from `~/.sitectl/key`
+
+<Warning>
+After logging out, you'll need to run `sitectl login` again to use API-dependent commands.
+</Warning>
+
+## Authentication Flow
+
+### OAuth Flow
+
+1. Run `sitectl login`
+2. Browser opens to LibOps login page
+3. Choose "Sign in with Google"
+4. Authorize the application
+5. Browser redirects back to sitectl
+6. Credentials saved locally
+
+### Email/Password Flow
+
+1. Run `sitectl login`
+2. Browser opens to LibOps login page
+3. Enter email and password
+4. Browser redirects back to sitectl
+5. Credentials saved locally
+
+## Token Management
+
+### Token Storage
+
+Tokens are stored in `~/.sitectl/oauth.json` with secure file permissions (0600).
+
+### Token Expiry
+
+OAuth tokens expire after a period of time. Use `sitectl whoami` to check expiry:
+
+```bash
+sitectl whoami
+```
+
+If your token is expired, simply run `sitectl login` again.
+
+### Automatic Token Usage
+
+Once authenticated, sitectl automatically includes your credentials in all API requests. No need to manually specify tokens.
+
+## Security Best Practices
+
+<Tip>
+**Use API Keys for CI/CD**: For automated environments, use API keys instead of OAuth tokens.
+</Tip>
+
+<Warning>
+**Protect Your Credentials**: Never commit `~/.sitectl/oauth.json` or `~/.sitectl/key` to version control.
+</Warning>
+
+<Note>
+**File Permissions**: sitectl automatically sets secure permissions (0600) on credential files.
+</Note>
+
+### Recommendations
+
+1. **Use separate API keys** for different machines/environments
+2. **Rotate keys regularly** by deleting old keys and creating new ones
+3. **Name keys descriptively** to track where they're being used
+4. **Revoke compromised keys** immediately via the API or dashboard
+5. **Don't share keys** between team members
+
+## Troubleshooting
+
+### Login Browser Not Opening
+
+If the browser doesn't open automatically:
+1. Copy the URL from the terminal output
+2. Manually paste it into your browser
+3. Complete the authentication flow
+
+### Token Expired
+
+```bash
+# Check token status
+sitectl whoami
+
+# Re-authenticate if expired
+sitectl login
+```
+
+### Permission Denied
+
+Ensure credential files have correct permissions:
+```bash
+chmod 600 ~/.sitectl/oauth.json
+chmod 600 ~/.sitectl/key
+```
+
+### Custom API URL
+
+If using a self-hosted LibOps instance:
+```bash
+sitectl login --api-url https://api.your-domain.com
+```
+
+Or set the environment variable:
+```bash
+export LIBOPS_API_URL=https://api.your-domain.com
+sitectl login
+```
+
+## Environment Variables
+
+- `LIBOPS_API_URL`: Override default API URL (default: `https://api.libops.io`)
+
+## File Locations
+
+- OAuth tokens: `~/.sitectl/oauth.json`
+- API key: `~/.sitectl/key`
+- Configuration: `~/.sitectl/config.yaml`

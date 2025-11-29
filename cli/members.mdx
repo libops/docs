@@ -1,0 +1,619 @@
+---
+title: 'Members'
+description: 'Manage team members with sitectl'
+---
+
+## Overview
+
+Members represent team members with access to LibOps resources. Members can be added at organization, project, or site levels with specific roles that determine their permissions.
+
+## Member Scopes
+
+Members can be added at three levels:
+
+- **Organization-level**: Access to all projects and sites in an organization
+- **Project-level**: Access to all sites in a project
+- **Site-level**: Access only to a specific site
+
+## Roles
+
+Common roles include:
+
+- **admin**: Full administrative access, can manage resources and members
+- **developer**: Can deploy and manage applications, limited admin access
+- **viewer**: Read-only access to resources
+
+<Note>
+Role names and permissions are defined by your LibOps instance. Check with your administrator for available roles.
+</Note>
+
+## List Members
+
+View members at different scopes:
+
+```bash
+# Organization members
+sitectl list members --organization-id <org-id>
+
+# Project members
+sitectl list members --project-id <project-id>
+
+# Site members
+sitectl list members --site-id <site-id>
+```
+
+### Flags
+
+- `--organization-id`: List organization-level members
+- `--project-id`: List project-level members
+- `--site-id`: List site-level members
+- `--no-cache`: Fetch fresh data from API
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list members --site-id site_123abc
+
+# JSON format
+sitectl list members --site-id site_123abc --format json
+
+# Custom template
+sitectl list members --site-id site_123abc \
+  --format '{{.Email}} - {{.Role}}'
+```
+
+### Examples
+
+```bash
+# List all members for a site
+sitectl list members --site-id site_123abc
+
+# List project members
+sitectl list members --project-id proj_xyz789
+
+# List organization members
+sitectl list members --organization-id org_abc123
+
+# Find members by email
+sitectl list members --organization-id org_abc123 --format json | \
+  jq '.[] | select(.Email | contains("admin"))'
+
+# Find members by role
+sitectl list members --site-id site_123abc --format json | \
+  jq '.[] | select(.Role == "admin")'
+```
+
+## Add Member
+
+Add a new team member at the appropriate scope:
+
+```bash
+# Organization member
+sitectl create members \
+  --organization-id <org-id> \
+  --email "user@example.com" \
+  --role "admin"
+
+# Project member
+sitectl create members \
+  --project-id <project-id> \
+  --email "user@example.com" \
+  --role "developer"
+
+# Site member
+sitectl create members \
+  --site-id <site-id> \
+  --email "user@example.com" \
+  --role "viewer"
+```
+
+### Required Flags
+
+One of:
+- `--organization-id`: Add organization-level member
+- `--project-id`: Add project-level member
+- `--site-id`: Add site-level member
+
+And:
+- `--email`: Member's email address
+- `--role`: Member's role (admin, developer, viewer, etc.)
+
+### Examples
+
+```bash
+# Add organization admin
+sitectl create members \
+  --organization-id org_abc123 \
+  --email "admin@example.com" \
+  --role "admin"
+
+# Add project developer
+sitectl create members \
+  --project-id proj_xyz789 \
+  --email "developer@example.com" \
+  --role "developer"
+
+# Add site viewer
+sitectl create members \
+  --site-id site_123abc \
+  --email "viewer@example.com" \
+  --role "viewer"
+
+# Add multiple members to a project
+sitectl create members \
+  --project-id proj_xyz789 \
+  --email "alice@example.com" \
+  --role "admin"
+
+sitectl create members \
+  --project-id proj_xyz789 \
+  --email "bob@example.com" \
+  --role "developer"
+
+sitectl create members \
+  --project-id proj_xyz789 \
+  --email "charlie@example.com" \
+  --role "viewer"
+```
+
+## Update Member Role
+
+Change an existing member's role:
+
+```bash
+sitectl edit member <member-id> \
+  --role "new-role"
+```
+
+### Available Flags
+
+- `--role`: New role for the member
+
+### Examples
+
+```bash
+# Promote to admin
+sitectl edit member member_xyz123 \
+  --role "admin"
+
+# Downgrade to viewer
+sitectl edit member member_xyz123 \
+  --role "viewer"
+
+# Change to developer
+sitectl edit member member_xyz123 \
+  --role "developer"
+```
+
+## Remove Member
+
+Remove a team member:
+
+```bash
+sitectl delete member <member-id>
+```
+
+<Warning>
+Removing a member immediately revokes their access. Ensure they don't have critical operations in progress.
+</Warning>
+
+### Examples
+
+```bash
+# Remove member
+sitectl delete member member_xyz123
+
+# Confirm before deletion
+read -p "Remove member member_xyz123? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sitectl delete member member_xyz123
+fi
+```
+
+## Complete Workflow Example
+
+```bash
+# Get project ID
+PROJECT_ID=$(sitectl list projects --format json | jq -r '.[0].ID')
+
+# Add team members with different roles
+echo "Adding team members..."
+
+# Project administrators
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "tech-lead@example.com" \
+  --role "admin"
+
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "devops-lead@example.com" \
+  --role "admin"
+
+# Developers
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "alice@example.com" \
+  --role "developer"
+
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "bob@example.com" \
+  --role "developer"
+
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "charlie@example.com" \
+  --role "developer"
+
+# Stakeholders (read-only)
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "product-manager@example.com" \
+  --role "viewer"
+
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "qa-lead@example.com" \
+  --role "viewer"
+
+# List all members
+echo "\nProject members:"
+sitectl list members --project-id $PROJECT_ID
+
+# Update a member's role
+echo "\nPromoting developer to admin..."
+DEV_MEMBER_ID=$(sitectl list members --project-id $PROJECT_ID --format json | \
+  jq -r '.[] | select(.Email == "alice@example.com") | .ID')
+
+sitectl edit member $DEV_MEMBER_ID --role "admin"
+
+echo "Updated member role"
+
+# Remove a member who left
+echo "\nRemoving departed team member..."
+OLD_MEMBER_ID=$(sitectl list members --project-id $PROJECT_ID --format json | \
+  jq -r '.[] | select(.Email == "departed@example.com") | .ID')
+
+if [ ! -z "$OLD_MEMBER_ID" ]; then
+  sitectl delete member $OLD_MEMBER_ID
+  echo "Removed member"
+fi
+```
+
+## Best Practices
+
+<Tip>
+**Principle of least privilege**: Grant the minimum access level needed for each team member
+</Tip>
+
+<Warning>
+**Regular audits**: Review team members quarterly and remove those who no longer need access
+</Warning>
+
+<Note>
+**Role hierarchy**: Organization members inherit access to projects and sites within that organization
+</Note>
+
+### Recommendations
+
+1. **Scope appropriately**: Add at the lowest level that provides necessary access
+2. **Use groups wisely**: Organization for leadership, project for team, site for specific maintainers
+3. **Regular reviews**: Audit membership monthly or quarterly
+4. **Offboarding process**: Remove members immediately when they leave the team
+5. **Document roles**: Maintain documentation of what each role can do
+6. **Emergency access**: Always have multiple admins at organization level
+
+## Common Member Patterns
+
+### Organization Structure
+
+```bash
+ORG_ID="org_abc123"
+
+# Executive team
+sitectl create members \
+  --organization-id $ORG_ID \
+  --email "cto@example.com" \
+  --role "admin"
+
+sitectl create members \
+  --organization-id $ORG_ID \
+  --email "vp-engineering@example.com" \
+  --role "admin"
+
+# Platform team (full access)
+sitectl create members \
+  --organization-id $ORG_ID \
+  --email "platform-lead@example.com" \
+  --role "admin"
+
+sitectl create members \
+  --organization-id $ORG_ID \
+  --email "sre-lead@example.com" \
+  --role "admin"
+```
+
+### Project Team
+
+```bash
+PROJECT_ID="proj_xyz789"
+
+# Project lead
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "project-lead@example.com" \
+  --role "admin"
+
+# Development team
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "backend-dev@example.com" \
+  --role "developer"
+
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "frontend-dev@example.com" \
+  --role "developer"
+
+# Product team (read-only)
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "product-owner@example.com" \
+  --role "viewer"
+```
+
+### Site-Specific Access
+
+```bash
+SITE_ID="site_123abc"
+
+# Site maintainer
+sitectl create members \
+  --site-id $SITE_ID \
+  --email "site-admin@example.com" \
+  --role "admin"
+
+# On-call engineers
+sitectl create members \
+  --site-id $SITE_ID \
+  --email "oncall@example.com" \
+  --role "developer"
+
+# External auditor (temporary)
+sitectl create members \
+  --site-id $SITE_ID \
+  --email "auditor@external.com" \
+  --role "viewer"
+```
+
+## Member Hierarchy
+
+Members inherit access down the hierarchy: Organization → Project → Site
+
+```bash
+# Organization admin: Can access everything
+sitectl create members \
+  --organization-id org_abc123 \
+  --email "admin@example.com" \
+  --role "admin"
+
+# Project developer: Can access all sites in project
+sitectl create members \
+  --project-id proj_xyz789 \
+  --email "developer@example.com" \
+  --role "developer"
+
+# Site viewer: Can only view this specific site
+sitectl create members \
+  --site-id site_123abc \
+  --email "contractor@example.com" \
+  --role "viewer"
+```
+
+## Access Audit
+
+### List All Access for a User
+
+```bash
+#!/bin/bash
+
+USER_EMAIL="user@example.com"
+
+echo "=== Access Audit for $USER_EMAIL ==="
+echo ""
+
+# Organization access
+echo "Organization-Level Access:"
+for ORG_ID in $(sitectl list organizations --format json | jq -r '.[].ID'); do
+  ORG_NAME=$(sitectl get organization $ORG_ID --format '{{.Name}}')
+  ROLE=$(sitectl list members --organization-id $ORG_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .Role")
+
+  if [ ! -z "$ROLE" ]; then
+    echo "  $ORG_NAME: $ROLE"
+  fi
+done
+echo ""
+
+# Project access
+echo "Project-Level Access:"
+for PROJECT_ID in $(sitectl list projects --format json | jq -r '.[].ID'); do
+  PROJECT_NAME=$(sitectl get project $PROJECT_ID --format '{{.Name}}')
+  ROLE=$(sitectl list members --project-id $PROJECT_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .Role")
+
+  if [ ! -z "$ROLE" ]; then
+    echo "  $PROJECT_NAME: $ROLE"
+  fi
+done
+echo ""
+
+# Site access
+echo "Site-Level Access:"
+for SITE_ID in $(sitectl list sites --format json | jq -r '.[].ID'); do
+  SITE_NAME=$(sitectl get site $SITE_ID --format '{{.Name}}')
+  ROLE=$(sitectl list members --site-id $SITE_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .Role")
+
+  if [ ! -z "$ROLE" ]; then
+    echo "  $SITE_NAME: $ROLE"
+  fi
+done
+```
+
+### List All Admins
+
+```bash
+#!/bin/bash
+
+echo "=== Admin Audit ==="
+echo ""
+
+# Organization admins
+echo "Organization Admins:"
+for ORG_ID in $(sitectl list organizations --format json | jq -r '.[].ID'); do
+  ORG_NAME=$(sitectl get organization $ORG_ID --format '{{.Name}}')
+  echo "  $ORG_NAME:"
+  sitectl list members --organization-id $ORG_ID --format json | \
+    jq -r '.[] | select(.Role == "admin") | "    " + .Email'
+done
+echo ""
+
+# Project admins
+echo "Project Admins:"
+for PROJECT_ID in $(sitectl list projects --format json | jq -r '.[].ID'); do
+  PROJECT_NAME=$(sitectl get project $PROJECT_ID --format '{{.Name}}')
+  ADMINS=$(sitectl list members --project-id $PROJECT_ID --format json | \
+    jq -r '.[] | select(.Role == "admin") | .Email')
+
+  if [ ! -z "$ADMINS" ]; then
+    echo "  $PROJECT_NAME:"
+    echo "$ADMINS" | sed 's/^/    /'
+  fi
+done
+```
+
+### Offboard User
+
+```bash
+#!/bin/bash
+
+USER_EMAIL="departed@example.com"
+
+echo "Removing all access for $USER_EMAIL..."
+
+# Remove from all organizations
+for ORG_ID in $(sitectl list organizations --format json | jq -r '.[].ID'); do
+  MEMBER_ID=$(sitectl list members --organization-id $ORG_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .ID")
+
+  if [ ! -z "$MEMBER_ID" ]; then
+    echo "Removing from organization..."
+    sitectl delete member $MEMBER_ID
+  fi
+done
+
+# Remove from all projects
+for PROJECT_ID in $(sitectl list projects --format json | jq -r '.[].ID'); do
+  MEMBER_ID=$(sitectl list members --project-id $PROJECT_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .ID")
+
+  if [ ! -z "$MEMBER_ID" ]; then
+    echo "Removing from project..."
+    sitectl delete member $MEMBER_ID
+  fi
+done
+
+# Remove from all sites
+for SITE_ID in $(sitectl list sites --format json | jq -r '.[].ID'); do
+  MEMBER_ID=$(sitectl list members --site-id $SITE_ID --format json | \
+    jq -r ".[] | select(.Email == \"$USER_EMAIL\") | .ID")
+
+  if [ ! -z "$MEMBER_ID" ]; then
+    echo "Removing from site..."
+    sitectl delete member $MEMBER_ID
+  fi
+done
+
+echo "Offboarding complete for $USER_EMAIL"
+```
+
+## Troubleshooting
+
+### Member Not Found
+
+```bash
+# Verify member exists
+sitectl list members --organization-id org_abc123
+
+# Check specific scope
+sitectl list members --project-id proj_xyz789
+sitectl list members --site-id site_123abc
+```
+
+### Cannot Add Member
+
+Ensure you have admin permissions:
+
+```bash
+# Check your role
+sitectl list members --organization-id org_abc123 | grep $(whoami)
+
+# Verify authentication
+sitectl whoami
+```
+
+### Member Already Exists
+
+A user can only be added once per scope. Update their role instead:
+
+```bash
+# Find existing member ID
+MEMBER_ID=$(sitectl list members --project-id proj_xyz789 --format json | \
+  jq -r '.[] | select(.Email == "user@example.com") | .ID')
+
+# Update role
+sitectl edit member $MEMBER_ID --role "admin"
+```
+
+### Cannot Remove Yourself
+
+You cannot remove your own membership. Have another admin remove you.
+
+## Output Fields
+
+Available fields for custom templates and JSON output:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique member identifier |
+| `Email` | string | Member's email address |
+| `Role` | string | Member's role |
+| `OrganizationID` | string | Organization ID (if org-scoped) |
+| `ProjectID` | string | Project ID (if project-scoped) |
+| `SiteID` | string | Site ID (if site-scoped) |
+| `CreatedAt` | timestamp | When member was added |
+| `UpdatedAt` | timestamp | Last role update |
+
+### Custom Template Examples
+
+```bash
+# List emails and roles
+sitectl list members --project-id proj_xyz789 \
+  --format '{{.Email}} - {{.Role}}'
+
+# Table with custom columns
+sitectl list members --project-id proj_xyz789 \
+  --format 'table {{.Email}}\t{{.Role}}\t{{.CreatedAt}}'
+
+# JSON processing - group by role
+sitectl list members --organization-id org_abc123 --format json | \
+  jq 'group_by(.Role) | map({role: .[0].Role, members: map(.Email)})'
+
+# Count members by role
+sitectl list members --project-id proj_xyz789 --format json | \
+  jq 'group_by(.Role) | map({role: .[0].Role, count: length})'
+```

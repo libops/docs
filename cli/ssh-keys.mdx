@@ -1,0 +1,67 @@
+---
+title: 'SSH Keys'
+description: 'Manage SSH keys for your account'
+---
+
+## Overview
+
+SSH keys are used to authenticate your account when interacting with LibOps resources via SSH (e.g., connecting to site shells or transferring files).
+
+## List SSH Keys
+
+List all SSH keys associated with your account:
+
+```bash
+sitectl list sshkeys --account-id <account-id>
+```
+
+### Flags
+
+- `--account-id`: (Required) The ID of the account to list keys for.
+
+## Create SSH Key
+
+Add a new SSH key to your account:
+
+```bash
+sitectl create sshkey \
+  --account-id <account-id> \
+  --name "My Laptop Key" \
+  --public-key "$(cat ~/.ssh/id_rsa.pub)"
+```
+
+Alternatively, you can provide the path to the public key file using `@`:
+
+```bash
+sitectl create sshkey \
+  --account-id <account-id> \
+  --name "My Laptop Key" \
+  --public-key "@~/.ssh/id_rsa.pub"
+```
+
+### Flags
+
+- `--account-id`: (Required) The ID of the account.
+- `--name`: (Optional) A friendly name for the key.
+- `--public-key`: (Required) The public key string or path to file (prefixed with `@`).
+
+## Delete SSH Key
+
+Remove an SSH key from your account:
+
+```bash
+sitectl delete sshkey <key-id> --account-id <account-id>
+```
+
+### Flags
+
+- `--account-id`: (Required) The ID of the account.
+- `--yes` or `-y`: Skip confirmation prompt.
+
+### Examples
+
+```bash
+# Delete an SSH key
+sitectl delete sshkey key_123abc --account-id acc_xyz789
+```
+

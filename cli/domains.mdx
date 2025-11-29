@@ -1,0 +1,77 @@
+---
+title: "Domains"
+description: "Manage custom site domains with sitectl"
+---
+
+Custom domains attach customer-owned hostnames to LibOps sites. These commands map to the LibOps site domain API.
+
+## Create Domain
+
+Add a hostname to a site:
+
+```bash
+sitectl create domain \
+  --site-id <site-id> \
+  --domain collections.example.edu
+```
+
+### Required flags
+
+- `--site-id`: Site ID that should receive traffic for the hostname.
+- `--domain`: Customer-owned hostname to attach.
+
+### Example
+
+```bash
+SITE_ID=$(sitectl list sites --format json | jq -r '.[0].SiteId')
+
+sitectl create domain \
+  --site-id "$SITE_ID" \
+  --domain collections.example.edu
+```
+
+After the command completes, CNAME the hostname to `customers.libops.site`. New domains are active by default so the shared ingress router can route traffic as soon as DNS reaches LibOps.
+
+<Note>
+Adding a domain does not open the site to the public internet. LibOps sites are IP-allowlisted by default, so visitors still need to match a firewall rule. Before publishing a production hostname, follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) and add `0.0.0.0/0` to the production site when it should accept public IPv4 traffic.
+</Note>
+
+## List Domains
+
+Show domains attached to a site:
+
+```bash
+sitectl list domains --site-id <site-id>
+```
+
+Use JSON output when scripting DNS checks:
+
+```bash
+sitectl list domains \
+  --site-id "$SITE_ID" \
+  --format json
+```
+
+## Delete Domain
+
+Remove a hostname from a site:
+
+```bash
+sitectl delete domain \
+  --site-id <site-id> \
+  collections.example.edu
+```
+
+Deleting the domain stops LibOps from routing that hostname to the site. Remove or update the public DNS record after the domain is detached.
+
+## DNS target
+
+Customer hostnames should point at the LibOps SaaS fallback hostname:
+
+```text
+Type:  CNAME
+Name:  collections.example.edu
+Value: customers.libops.site
+```
+
+Do not point the hostname at the site VM, Cloud Run router, or global load balancer IP directly.

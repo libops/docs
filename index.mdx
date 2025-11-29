@@ -1,97 +1,65 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Welcome to the LibOps docs"
+description: "Reference documentation, guides, and API/CLI references for the LibOps platform"
+mode: "wide"
 ---
 
-## Setting up
+These docs cover how to operate sites on the LibOps platform — for site managers using the Dashboard, for technical staff working with the API or CLI, and for institutional leaders evaluating the platform.
 
-Get your documentation site up and running in minutes.
+## Start here
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first organization, project, and site.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="CLI reference" icon="terminal" href="/cli/introduction">
+    Manage sites and local environments with `sitectl`.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="API reference" icon="code" href="/api/reference/introduction">
+    Automate LibOps operations from your own systems.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Terms of Service" icon="file-signature" href="https://www.libops.io/terms/">
+    Beta availability, service boundaries, and supported workloads.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## By role
 
-Everything you need to create world-class documentation.
+<CardGroup cols={3}>
+  <Card title="Deans & Directors" icon="building-columns" href="/platform/managed-platform">
+    Strategic value, operational risk, and sustainable open-source adoption.
+  </Card>
+  <Card title="Librarians & Site Managers" icon="gauge" href="/platform/site-manager-guide">
+    Day-to-day site management via the Dashboard, Slack, and the LibOps Task Agent.
+  </Card>
+  <Card title="Technical Staff" icon="terminal" href="/platform/engineer-guide">
+    GitHub-centric workflows, Docker Compose parity, and API integration.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Platform topics
 
-## Need inspiration?
+<CardGroup cols={2}>
+  <Card title="Managed platform" icon="cloud" href="/platform/managed-platform">
+    Secure compute, single-tenant sites, and repeatable production hosting.
+  </Card>
+  <Card title="Security & operations" icon="shield" href="/platform/security-operations">
+    Ingress, secrets, updates, and role-based access control.
+  </Card>
+  <Card title="Customization" icon="code" href="/platform/customization">
+    GitHub integration and LibOps Task Agent workflows.
+  </Card>
+  <Card title="LibOps Task Agent" icon="wand-magic-sparkles" href="/platform/coding-agent-workflow">
+    The lifecycle of task assignment, preview, pull request, and rollout.
+  </Card>
+  <Card title="Automation backplane" icon="webhook" href="/platform/automation-backplane">
+    Webhook-driven CI/CD, scanning, and self-hosted runners.
+  </Card>
+  <Card title="API and sitectl" icon="terminal" href="/platform/api-cli">
+    Integrating LibOps into existing technical workflows.
+  </Card>
+</CardGroup>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+LibOps is currently in **Beta** and serves GLAM institutions, colleges, and universities in the United States and Canada. Review the [Terms of Service](https://www.libops.io/terms/) for details on supported workloads and availability.
+</Note>

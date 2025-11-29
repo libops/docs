@@ -1,0 +1,153 @@
+---
+title: "Managed Platform"
+description: "How LibOps provides secure compute, single-tenant hosting, and repeatable operations for open-source applications"
+---
+
+LibOps gives institutions a managed platform for operating open-source applications — without the need to build a custom cloud operations practice for every project.
+
+The platform combines Google Cloud infrastructure, single-tenant virtual machines, Cloudflare edge security, Vault-backed secret management, GitHub-centric deployment workflows, and standardized Docker Compose patterns into one operating model.
+
+<Info>
+**Who this page is for:** institutional leaders, IT directors, and procurement evaluators. For day-to-day operators see the [Site Manager Guide](/platform/site-manager-guide). For developers see the [Engineer Guide](/platform/engineer-guide).
+</Info>
+
+## Strategic value for institutional leadership
+
+LibOps is designed for organizations that want the flexibility of open-source software with a mature operational foundation underneath.
+
+<CardGroup cols={2}>
+  <Card title="One platform, every role" icon="users-gear">
+    Library staff and systems engineers work in the same platform. AI-assisted development lets non-technical staff request changes safely while engineers stay in charge of every line of code.
+  </Card>
+  <Card title="Reduced operational risk" icon="shield-check">
+    Transition from fragile, undocumented environments to a professionally managed platform with standardized security and update paths.
+  </Card>
+  <Card title="Sustainable open source" icon="seedling">
+    Join a shared operating model that strengthens the open-source communities your institution depends on.
+  </Card>
+  <Card title="Resource optimization" icon="coins">
+    Focus your internal technical talent on high-value application work rather than routine infrastructure maintenance.
+  </Card>
+</CardGroup>
+
+<Snippet file="task-agent.mdx" />
+
+## The standardized platform contract
+
+Instead of requiring every project to independently solve for basic operations, LibOps gives every site the same foundation:
+
+<CardGroup cols={3}>
+  <Card title="Managed Cloud" icon="cloud">
+    Sites run in professionally managed Google Cloud environments.
+  </Card>
+  <Card title="Isolation" icon="server">
+    Each site runs on its own dedicated virtual machine.
+  </Card>
+  <Card title="Git-Centric" icon="github">
+    All application settings and deployment logic live in version control.
+  </Card>
+  <Card title="Consistency" icon="laptop-code">
+    Local development and production use identical patterns.
+  </Card>
+  <Card title="Resource Model" icon="hierarchy">
+    Secrets, members, and rules are structured resources.
+  </Card>
+  <Card title="Flexible Access" icon="terminal">
+    Manage sites through the Dashboard, API, or the `sitectl` CLI.
+  </Card>
+</CardGroup>
+
+## Secure compute on Google Cloud
+
+LibOps manages the secure compute environment on Google Cloud. Your team focuses on the application; we handle infrastructure provisioning, host-level configuration, and platform integration.
+
+<Columns cols={2}>
+  <Card title="For leadership" icon="building-columns">
+    No internal cloud architecture practice required before an open-source application can be deployed as a production service.
+  </Card>
+  <Card title="For engineers" icon="code">
+    The application environment stays familiar: Git, Docker Compose, and `sitectl` are the main tools.
+  </Card>
+</Columns>
+
+## Single-tenant site isolation
+
+Every LibOps site runs on its own dedicated virtual machine. Each production workload has a distinct compute boundary, avoiding the risks of shared application runtimes.
+
+<CardGroup cols={2}>
+  <Card title="Fault isolation" icon="shield">
+    App-specific issues stay contained within the site's own environment.
+  </Card>
+  <Card title="Predictable performance" icon="gauge">
+    Resource allocation and maintenance windows are scoped to the individual site.
+  </Card>
+  <Card title="Clear ownership" icon="user-check">
+    Operational responsibility for production, staging, and review environments is explicitly defined.
+  </Card>
+  <Card title="Simpler troubleshooting" icon="magnifying-glass">
+    Easier to reason about when diagnosing performance or configuration issues.
+  </Card>
+</CardGroup>
+
+## Standardized application lifecycle
+
+Every LibOps template follows the same operational shape. Site managers work through the Dashboard; technical staff use the API and `sitectl`; the underlying repository and Docker Compose workload stay consistent across environments.
+
+<Steps>
+  <Step title="Create the site" icon="folder-plus">
+    Start from a supported template for the application family.
+  </Step>
+  <Step title="Configure access" icon="shield">
+    Set secrets, members, firewall rules, and domains through platform resources.
+  </Step>
+  <Step title="Preview changes" icon="eye">
+    Review branch and task work in live preview environments.
+  </Step>
+  <Step title="Review in GitHub" icon="github">
+    Keep code, configuration, and deployment logic in pull requests.
+  </Step>
+  <Step title="Roll out with sitectl or the Dashboard" icon="rocket">
+    Promote approved changes through the same production path.
+  </Step>
+</Steps>
+
+<Tip>
+Technical teams still get the same repo-level Make targets across templates. See the [Engineer Guide](/platform/engineer-guide) and [Application Templates](/templates/app-support) for the developer-facing details.
+</Tip>
+
+## Platform resource model
+
+LibOps organizes resources to mirror the way institutions actually delegate responsibility.
+
+<CardGroup cols={3}>
+  <Card title="Organizations" icon="building-columns">
+    Represent the institution, department, or program.
+  </Card>
+  <Card title="Projects" icon="folder-tree">
+    Group related applications and their environments.
+  </Card>
+  <Card title="Sites" icon="globe">
+    Specific running environments — production, staging, development.
+  </Card>
+</CardGroup>
+
+Members, secrets, settings, and firewall rules apply at the appropriate level and inherit as needed.
+
+## Operating interfaces
+
+The LibOps platform supports both manual oversight and automated workflows.
+
+<CardGroup cols={2}>
+  <Card title="Management Dashboard" icon="gauge" href="https://dash.libops.io">
+    Hosted UI for day-to-day project management, site monitoring, and member administration.
+  </Card>
+  <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
+    Command-line tool for local and remote environments, logs, port forwarding, and deployments.
+  </Card>
+  <Card title="Platform API" icon="code" href="/api/reference/introduction">
+    Programmatic access to organizations, projects, sites, and operational resources.
+  </Card>
+  <Card title="GitHub Integration" icon="github" href="/platform/github">
+    Managed or customer-owned repositories for transparent code review and deployment.
+  </Card>
+</CardGroup>

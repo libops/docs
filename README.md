@@ -1,43 +1,26 @@
-# Mintlify Starter Kit
+# LibOps Platform Overview
 
-Use the starter kit to get your docs deployed and ready to customize.
+LibOps helps teams run and maintain application sites from a hosted dashboard. The platform coordinates GitHub repositories, cloud infrastructure, site controllers, and customer-owned secrets so changes can move from a repository to a running site with clear audit trails.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+LibOps serves GLAM institutions (Galleries, Libraries, Archives, and Museums), colleges, and universities in the United States and Canada.
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+The company mission is to grow open-source adoption by helping institutions handle the technical work around running OSS. LibOps standardizes operations and local customization so institutions can stay closer to the projects they depend on.
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+## What Customers Should Know
 
-## Development
+- Dashboard actions use your logged-in session. Assistant and task actions do not accept a pasted Authorization header in place of your browser session.
+- Deployment and automation logs are stored for visibility, but secret-shaped values such as bearer tokens, API keys, Vault tokens, session cookies, and passwords are redacted before persistence.
+- Site controllers run in your project to apply SSH keys, secrets, firewall rules, and deployments for the sites you manage.
+- GitHub integration is used for template repositories, pull requests, and deployment events. LibOps Managed sites use private repositories in a LibOps-managed GitHub organization; customer-owned private repositories require the LibOps GitHub App installation flow.
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+## Technical Summary
 
-```
-npm i -g mint
-```
+- API and dashboard traffic uses ConnectRPC JSON behind the LibOps API.
+- Background workers share the same MariaDB task and event schema as the API.
+- The control plane schedules Terraform runner jobs for infrastructure changes and forwards site reconciliation requests through Controller Ingress.
+- Site controller deployments are constrained to LibOps-managed deployment directories and validated command arguments.
+- Customer secrets live in customer Vault scopes where configured; API-owned operational secrets live in the LibOps API Vault.
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+## Support
 
-```
-mint dev
-```
-
-View your local preview at `http://localhost:3000`.
-
-## Publishing changes
-
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
-
-## Need help?
-
-### Troubleshooting
-
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Use your LibOps dashboard for project and site status. Include the organization, project, site name, and approximate time of the issue when contacting support so logs can be correlated without sharing secrets.

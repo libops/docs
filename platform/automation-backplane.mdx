@@ -1,0 +1,96 @@
+---
+title: "Automation Backplane"
+description: "How LibOps uses webhook-driven automation for PR feedback, scanners, and self-hosted runners"
+---
+
+LibOps uses GitHub as an important collaboration surface, but the platform should not depend entirely on third-party hosted automation for core operations.
+
+LibOps is building a webhook-driven automation backplane for events that need to trigger work inside the platform: **LibOps Task Agent** follow-up, dependency scanning, and CI runner orchestration.
+
+## GitHub Events Into LibOps Tasks
+
+**LibOps Task Agent** pull requests need a feedback loop. Reviewers should be able to use normal GitHub review comments and invoke LibOps with `@libops` when they want the agent to treat a comment as a follow-up task message.
+
+The automation backplane listens for GitHub events such as:
+
+- Pull request review comments.
+- Pull request reviews.
+- Pull request conversation comments.
+- Pushes to task branches.
+- Pull request merge or close events.
+
+When the event belongs to a PR created by the **LibOps Task Agent** and the comment body includes `@libops`, the platform can map it back to the original task. Invoked review comments can then be sent into the task as follow-up instructions, allowing the agent to update the branch and push another revision.
+
+Only explicitly invoked comments from authorized reviewers can drive that follow-up loop. LibOps syncs members with GitHub usernames onto the relevant site repositories: owner/developer roles receive write access and viewer roles receive read access. The platform requires `@libops` and checks GitHub repository write permission when a review event arrives; otherwise the comment stays in GitHub but is not forwarded to the task agent.
+
+## Event-Driven Webhook Integration
+
+The implementation model is a small event service that receives webhook events, validates them, classifies them, and dispatches follow-up work.
+
+For **LibOps Task Agent** tasks, the platform needs to know:
+
+- Which GitHub installation and repository produced the event.
+- Which pull request and branch are involved.
+- Whether the PR was created by the **LibOps Task Agent**.
+- Whether the comment explicitly invokes LibOps with `@libops`.
+- Which LibOps task owns the branch.
+- Which preview environment should be refreshed after updates.
+- Whether a reviewer comment should become a follow-up message to the agent.
+
+The service is intentionally event-driven. GitHub is the collaboration surface, but LibOps owns the task state, preview environment, runner selection, and follow-up execution.
+
+## Fault-Tolerant Operating Model
+
+LibOps keeps customer-facing API requests separate from retrying background work. The API request path validates the caller, commits the requested state change, records any required outbox event in MariaDB, and returns. Control-plane workers then drain durable queues for reconciliation, webhook fanout, Slack task replies, and Terraform scheduling.
+
+API-local maintenance work follows the same rule. Organization synchronization and email verification cleanup run under the dedicated `api-worker` process, selected by `LIBOPS_API_WORKER_JOBS`, rather than inside the request-serving API process. The API worker exposes its own `/health` and `/ready` endpoints so it can be scaled, rolled out, and restarted independently.
+
+This gives the platform three operational boundaries:
+
+- **Liveness vs readiness:** `/health` only proves that a process is alive. `/ready` reports whether the instance can safely receive traffic, including database availability.
+- **Durable work before acknowledgement:** mutating API paths should not report success until both the resource change and the outbox/event record are committed.
+- **Last-known-good runtime state:** existing sites continue serving from their last applied configuration if the API or control plane is temporarily unavailable. A control-plane outage should block new changes, not running site traffic.
+
+The request-serving API and `api-worker` deploy as separate Cloud Run services. The API service uses `/health` for liveness and `/ready` as the startup gate. The worker runs with at least one instance and always-allocated CPU because it owns polling loops; moving those loops back into the API process would reintroduce request-path coupling.
+
+Vault OIDC discovery and JWKS validation follow the same last-known-good rule. Successful live JWKS refreshes write a local cache containing the issuer, JWKS URL, keys, and cache time. If Vault or JWKS discovery is briefly unavailable during startup, the API can start from that cache for the configured trust window and reports `degraded_last_known_good` in `/ready`. After the trust window expires, readiness fails and cached keys are no longer used.
+
+Workers are expected to be idempotent. Duplicate webhook deliveries, Pub/Sub retries, worker restarts, and replayed events must converge through dedupe keys, leases, unique constraints, or upserts rather than process-local memory.
+
+## Release Cadence
+
+Changes to the automation backplane move through a staged cadence:
+
+1. Add or update observability first: readiness checks, queue depth, oldest pending age, dead-letter counts, retry rate, and worker crash rate.
+2. Move retrying or scheduled background work out of the request-serving API and into explicit worker services or jobs.
+3. Ship new behavior behind a flag or release channel and exercise it on development or internal tenants first.
+4. Promote to low-risk production tenants before broad rollout.
+5. Run failure drills for worker restarts, duplicate delivery, database failover, Vault/JWKS unavailability, and queue backlog recovery.
+
+## LibOps-Run Renovate Scanning
+
+The same automation backplane can trigger LibOps-run dependency scanning for private repositories.
+
+Rather than relying entirely on hosted Renovate infrastructure, LibOps can run its own Renovate scanners across managed and customer-connected repositories. This gives LibOps more control over scheduling, credentials, repository access, private dependency behavior, and operational cost.
+
+Renovate output should still use the same reviewable workflow: branches, pull requests, preview or test environments where appropriate, and human approval before rollout.
+
+## Self-Hosted CI Runners
+
+The backplane can also trigger LibOps-managed CI runners instead of relying only on GitHub-hosted Actions orchestration.
+
+This gives LibOps room to:
+
+- Run CI near the machines and environments that already host the application.
+- Reuse Docker layer and package caches more effectively.
+- Reduce reliance on GitHub-hosted runner capacity and billing for private repositories.
+- Run checks that need controlled access to LibOps-managed infrastructure.
+- Keep private repository automation under LibOps operational policy.
+
+The goal is not to hide CI from GitHub. The goal is to let GitHub remain the collaboration and review surface while LibOps controls the execution plane when that is safer, faster, or more economical.
+
+## Platform Pattern
+
+The backplane follows the same product principle as the **LibOps Task Agent** workflow: keep humans in the loop, keep changes in Git, and make automation operate through reviewable events.
+
+GitHub webhooks trigger work. LibOps classifies and runs the work. Pull requests, preview environments, and rollout paths remain the control points.

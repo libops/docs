@@ -1,0 +1,370 @@
+---
+title: 'Configuration'
+description: 'Configure sitectl behavior and settings'
+---
+
+## Configuration File
+
+sitectl stores its configuration in `~/.sitectl/config.yaml`. This file contains all your contexts and settings.
+
+## View Configuration
+
+```bash
+sitectl config view
+```
+
+## Configuration Structure
+
+```yaml
+current-context: production
+contexts:
+  - name: local
+    type: local
+    project-dir: /home/user/myapp
+    docker-socket: /var/run/docker.sock
+    profile: development
+    env-file:
+      - .env
+      - .env.local
+
+  - name: production
+    type: remote
+    project-dir: /var/www/app
+    docker-socket: /var/run/docker.sock
+    hostname: prod.example.com
+    ssh-user: deploy
+    ssh-port: 22
+    ssh-key: /home/user/.ssh/id_rsa
+    profile: production
+    env-file:
+      - .env.production
+    sudo: false
+```
+
+## Configuration Options
+
+### Context Settings
+
+| Setting | Type | Description | Required |
+|---------|------|-------------|----------|
+| `name` | string | Unique context name | Yes |
+| `type` | string | `local` or `remote` | Yes |
+| `project-dir` | string | Path to docker-compose.yml directory | Yes |
+| `docker-socket` | string | Docker socket path | No (default: /var/run/docker.sock) |
+| `profile` | string | Docker Compose profile to use | Yes |
+| `env-file` | array | Environment file paths | No |
+
+### Remote-Only Settings
+
+| Setting | Type | Description | Required |
+|---------|------|-------------|----------|
+| `hostname` | string | Remote server hostname/IP | Yes |
+| `ssh-user` | string | SSH username | Yes |
+| `ssh-port` | int | SSH port | No (default: 22) |
+| `ssh-key` | string | Path to SSH private key | Yes |
+| `sudo` | boolean | Use sudo for Docker commands | No (default: false) |
+
+## Environment Variables
+
+### LIBOPS_API_URL
+
+Override the default LibOps API URL:
+
+```bash
+export LIBOPS_API_URL=https://api.custom-domain.com
+sitectl login
+```
+
+### LOG_LEVEL
+
+Control logging verbosity:
+
+```bash
+export LOG_LEVEL=DEBUG
+sitectl compose up
+```
+
+Values: `DEBUG`, `INFO`, `WARN`, `ERROR`
+
+### Command-Line Override
+
+```bash
+sitectl compose ps --log-level DEBUG
+```
+
+## Global Flags
+
+All sitectl commands support these global flags:
+
+### --context
+
+Override the current context for a single command:
+
+```bash
+sitectl compose ps --context production
+sitectl list sites --context staging
+```
+
+### --api-url
+
+Specify a custom API URL:
+
+```bash
+sitectl login --api-url https://api.example.com
+sitectl list organizations --api-url https://api.example.com
+```
+
+### --log-level
+
+Set logging level for the command:
+
+```bash
+sitectl compose up --log-level DEBUG
+sitectl port-forward 5432:postgres:5432 --log-level WARN
+```
+
+### --format
+
+Control output format for list and get commands:
+
+```bash
+# Table format (default)
+sitectl list sites --format table
+
+# JSON format
+sitectl list sites --format json
+
+# Custom Go template
+sitectl list sites --format '{{.Name}}: {{.Domain}}'
+
+# Table with custom template
+sitectl list sites --format 'table {{.ID}}\t{{.Name}}\t{{.Status}}'
+```
+
+## File Locations
+
+### Configuration Files
+
+- **Config**: `~/.sitectl/config.yaml`
+- **OAuth tokens**: `~/.sitectl/oauth.json`
+- **API key**: `~/.sitectl/key`
+
+### Permissions
+
+sitectl automatically sets secure permissions:
+
+- Config file: `0644` (readable by user and group)
+- OAuth tokens: `0600` (readable/writable by user only)
+- API key: `0600` (readable/writable by user only)
+
+## Shell Completion
+
+sitectl supports shell completion for bash, zsh, fish, and PowerShell.
+
+### Bash
+
+```bash
+# Add to ~/.bashrc
+source <(sitectl completion bash)
+
+# Or install permanently
+sitectl completion bash > /etc/bash_completion.d/sitectl
+```
+
+### Zsh
+
+```bash
+# Add to ~/.zshrc
+source <(sitectl completion zsh)
+
+# Or install permanently
+sitectl completion zsh > "${fpath[1]}/_sitectl"
+```
+
+### Fish
+
+```bash
+sitectl completion fish | source
+
+# Or install permanently
+sitectl completion fish > ~/.config/fish/completions/sitectl.fish
+```
+
+### PowerShell
+
+```powershell
+sitectl completion powershell | Out-String | Invoke-Expression
+
+# Or add to profile
+sitectl completion powershell >> $PROFILE
+```
+
+## Advanced Configuration
+
+### Multiple Environment Files
+
+Specify multiple environment files in order of precedence:
+
+```bash
+sitectl config set-context mysite \
+  --env-file .env \
+  --env-file .env.local \
+  --env-file secrets.env
+```
+
+Later files override earlier ones.
+
+### Using Sudo for Docker
+
+Some remote systems require sudo for Docker commands:
+
+```bash
+sitectl config set-context remote \
+  --type remote \
+  --hostname server.example.com \
+  --ssh-user deploy \
+  --ssh-key ~/.ssh/id_rsa \
+  --project-dir /var/www/app \
+  --profile production \
+  --sudo true
+```
+
+### Custom Docker Socket
+
+Specify a non-standard Docker socket location:
+
+```bash
+sitectl config set-context custom \
+  --type local \
+  --project-dir /path/to/project \
+  --profile default \
+  --docker-socket /custom/path/docker.sock
+```
+
+## Configuration Best Practices
+
+<Tip>
+**Name contexts descriptively**: Use names like `local-dev`, `staging`, `production` instead of generic names
+</Tip>
+
+<Warning>
+**Protect SSH keys**: Ensure SSH private keys have correct permissions (0600)
+</Warning>
+
+<Note>
+**Use absolute paths**: Always use absolute paths for directories and files in context configuration
+</Note>
+
+### Recommendations
+
+1. **Separate contexts per environment**: Create distinct contexts for dev, staging, production
+2. **Use profiles effectively**: Map Docker Compose profiles to context types
+3. **Document custom configurations**: Keep notes on special settings for remote contexts
+4. **Back up your config**: Periodically back up `~/.sitectl/config.yaml`
+5. **Use version control**: Consider storing context templates (without secrets) in your project repo
+
+## Example Configurations
+
+### Multi-Environment Setup
+
+```yaml
+current-context: local-dev
+contexts:
+  - name: local-dev
+    type: local
+    project-dir: /home/user/projects/myapp
+    profile: development
+    env-file:
+      - .env.development
+      - .env.local
+
+  - name: staging
+    type: remote
+    hostname: staging.example.com
+    ssh-user: deploy
+    ssh-key: /home/user/.ssh/deploy_rsa
+    project-dir: /var/www/staging
+    profile: staging
+    env-file:
+      - .env.staging
+
+  - name: production
+    type: remote
+    hostname: prod.example.com
+    ssh-user: deploy
+    ssh-key: /home/user/.ssh/deploy_rsa
+    project-dir: /var/www/production
+    profile: production
+    env-file:
+      - .env.production
+    sudo: false
+```
+
+### Multiple Local Projects
+
+```yaml
+current-context: project-a
+contexts:
+  - name: project-a
+    type: local
+    project-dir: /home/user/projects/project-a
+    profile: default
+
+  - name: project-b
+    type: local
+    project-dir: /home/user/projects/project-b
+    profile: default
+
+  - name: legacy-app
+    type: local
+    project-dir: /var/legacy/app
+    profile: production
+    docker-socket: /var/run/docker.sock
+```
+
+## Troubleshooting
+
+### Configuration Not Found
+
+If sitectl can't find your configuration:
+
+```bash
+# Check if config exists
+ls -la ~/.sitectl/config.yaml
+
+# View current config
+sitectl config view
+
+# Create a new context
+sitectl config set-context default \
+  --type local \
+  --project-dir $(pwd) \
+  --profile default \
+  --default
+```
+
+### Permission Errors
+
+Fix file permissions:
+
+```bash
+chmod 644 ~/.sitectl/config.yaml
+chmod 600 ~/.sitectl/oauth.json
+chmod 600 ~/.sitectl/key
+chmod 700 ~/.sitectl
+```
+
+### SSH Key Issues
+
+Ensure SSH keys are properly configured:
+
+```bash
+# Test SSH connection
+ssh -i ~/.ssh/id_rsa user@hostname
+
+# Fix key permissions
+chmod 600 ~/.ssh/id_rsa
+
+# Update context with correct key path
+sitectl config set-context remote --ssh-key ~/.ssh/correct_key
+```

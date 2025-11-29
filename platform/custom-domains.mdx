@@ -1,0 +1,99 @@
+---
+title: "Custom Domains"
+description: "Add a public hostname to a LibOps-managed site"
+---
+
+LibOps sites can serve traffic for customer-owned domains through the shared Cloudflare ingress path. You add the hostname to the site in LibOps, then point the hostname at the LibOps SaaS fallback hostname.
+
+Do not point customer DNS directly at a site VM, Cloud Run service, or load balancer IP. The public hostname should enter through Cloudflare so edge rules, TLS, rate limits, and the LibOps site router stay in the request path.
+
+<Note>
+Adding a domain does not make the site public by itself. LibOps sites are IP-allowlisted by default, so only IPs covered by firewall rules can reach them. Before announcing a production hostname, follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) and add a public production firewall rule when appropriate.
+</Note>
+
+## Before you start
+
+You need:
+
+- A LibOps site where you have permission to manage site settings.
+- Access to the domain's DNS provider.
+- A subdomain such as `collections.example.edu` or `journal.example.org`.
+- A publishing plan for production firewall access.
+
+<Note>
+Root domains such as `example.edu` require DNS-provider-specific CNAME flattening or ALIAS/ANAME support. Use a subdomain unless LibOps support has confirmed the root-domain plan.
+</Note>
+
+## Add a domain in the dashboard
+
+1. Open the LibOps dashboard.
+2. Go to the organization and project that contain the site.
+3. Open the site.
+4. Open the site's Domains or Ingress section.
+5. Select **Add domain**.
+6. Enter the hostname, for example `collections.example.edu`.
+7. Confirm the target site and save.
+
+After saving, LibOps records the domain against the site as active. The shared ingress router can route the hostname as soon as DNS sends traffic to the LibOps fallback hostname.
+
+## Add DNS records
+
+Point the public hostname at the LibOps fallback hostname:
+
+```text
+Type:  CNAME
+Name:  collections.example.edu
+Value: customers.libops.site
+TTL:   300 or provider default
+```
+
+If the domain is hosted in another Cloudflare zone, create the CNAME as **DNS only**, not proxied.
+
+## Add a domain with sitectl
+
+The `sitectl` command surface for custom domains is:
+
+```bash
+sitectl create domain \
+  --site-id <site-id> \
+  --domain collections.example.edu
+```
+
+List domains on the site:
+
+```bash
+sitectl list domains --site-id <site-id>
+```
+
+Remove a domain from the site:
+
+```bash
+sitectl delete domain \
+  --site-id <site-id> \
+  collections.example.edu
+```
+
+The command returns the domain status and router target recorded by LibOps.
+
+## Check Routing
+
+The domain is ready when:
+
+- LibOps reports the domain as active.
+- Public DNS resolves the hostname to the LibOps fallback hostname.
+- TLS is available at the edge.
+- Firewall rules allow the intended visitors. For a public production site, this usually includes `0.0.0.0/0` for IPv4 traffic.
+- Requests for the customer hostname are routed to the correct LibOps site.
+- The original `Host` header is preserved so the application can identify the public hostname.
+
+DNS changes can take time to propagate. If the domain still does not resolve after the status is active, check the authoritative DNS records first.
+
+## Common issues
+
+| Issue | What to check |
+| --- | --- |
+| Domain is not active | Confirm the domain was created without an explicit pending, suspended, or blocked status. |
+| Browser sees the wrong site | Confirm the hostname is attached to the intended LibOps site. |
+| Domain resolves but does not load | Confirm the CNAME points to `customers.libops.site`, not a VM IP or Cloud Run hostname. |
+| Domain resolves but visitors are blocked | Confirm firewall rules allow the visitor IPs. Public production sites need an intentional public rule such as `0.0.0.0/0`. |
+| Cloudflare dashboard shows another proxy layer | If your DNS provider is Cloudflare, make the customer CNAME DNS-only. |

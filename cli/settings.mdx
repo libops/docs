@@ -1,0 +1,127 @@
+---
+title: 'Settings'
+description: 'Manage configuration settings with sitectl'
+---
+
+## Overview
+
+Settings allow you to configure non-sensitive key-value pairs for your organizations, projects, and sites. Unlike secrets, settings are visible in plain text and are used for configuration flags, feature toggles, or public properties.
+
+## Setting Scopes
+
+Settings can be created at three levels:
+
+- **Organization-level**: Apply to all projects and sites in an organization
+- **Project-level**: Apply to all sites in a project
+- **Site-level**: Apply only to a specific site
+
+## List Settings
+
+View settings at different scopes:
+
+```bash
+# Organization settings
+sitectl list settings --organization-id <org-id>
+
+# Project settings
+sitectl list settings --project-id <project-id>
+
+# Site settings
+sitectl list settings --site-id <site-id>
+```
+
+### Flags
+
+- `--organization-id`: List organization-level settings
+- `--project-id`: List project-level settings
+- `--site-id`: List site-level settings
+- `--no-cache`: Fetch fresh data from API
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list settings --site-id site_123abc
+
+# JSON format
+sitectl list settings --site-id site_123abc --format json
+```
+
+## Create Setting
+
+Create a new setting at the appropriate scope:
+
+```bash
+# Organization setting
+sitectl create settings \
+  --organization-id <org-id> \
+  --key "FEATURE_FLAG" \
+  --value "true" \
+  --description "Enable new feature"
+
+# Project setting
+sitectl create settings \
+  --project-id <project-id> \
+  --key "DEFAULT_REGION" \
+  --value "us-west"
+
+# Site setting
+sitectl create settings \
+  --site-id <site-id> \
+  --key "THEME_COLOR" \
+  --value "blue"
+```
+
+### Required Flags
+
+One of:
+- `--organization-id`: Create organization-level setting
+- `--project-id`: Create project-level setting
+- `--site-id`: Create site-level setting
+
+And:
+- `--key`: Setting key (unique within scope)
+- `--value`: Setting value
+- `--description`: (Optional) Description of the setting
+- `--editable`: (Optional, default: true) Whether the setting can be edited later
+
+## Edit Setting
+
+Update an existing setting's value:
+
+```bash
+sitectl edit setting <setting-id> \
+  --value "new-value"
+```
+
+### Required Flags
+
+One of:
+- `--organization-id`: Organization ID
+- `--project-id`: Project ID
+- `--site-id`: Site ID
+
+And:
+- `--value`: New value for the setting
+
+## Delete Setting
+
+Delete a setting:
+
+```bash
+sitectl delete setting <setting-id> --site-id <site-id>
+```
+
+### Required Flags
+
+One of:
+- `--organization-id`: Organization ID
+- `--project-id`: Project ID
+- `--site-id`: Site ID
+
+### Examples
+
+```bash
+# Delete a site setting
+sitectl delete setting setting_xyz123 --site-id site_123abc
+```

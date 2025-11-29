@@ -1,0 +1,210 @@
+---
+title: "Engineer Guide"
+description: "Use the LibOps API, sitectl CLI, GitHub integration, and standardized Docker Compose patterns to operate sites with full visibility and control"
+---
+
+This guide is for software engineers, systems administrators, developers, and technical partners who build and operate applications on the LibOps platform.
+
+<Info>
+LibOps is a transparent platform, not a black box. You get a full API, the `sitectl` CLI, GitHub-centric workflows, and standardized Docker Compose patterns — so you keep complete visibility and control over every stack you operate here.
+</Info>
+
+## Why engineers like working here
+
+<CardGroup cols={3}>
+  <Card title="Consistent infra" icon="server">
+    Production runs the **exact same Docker Compose pattern** as your laptop. No environmental drift.
+  </Card>
+  <Card title="Native CI/CD" icon="github">
+    GitHub-centric workflows with an automatic **preview environment** for every PR — whether from a human or the Task Agent.
+  </Card>
+  <Card title="Operator tooling" icon="terminal">
+    `sitectl` gives you app-aware plugins and remote environment management from the terminal you already use.
+  </Card>
+</CardGroup>
+
+## You stay in charge of the code
+
+LibOps gives non-technical staff a way to propose changes through a web UI — but the change still lands as a GitHub pull request you review like any other. Nothing reaches production without engineering sign-off.
+
+<Snippet file="task-agent.mdx" />
+
+## Engineering surfaces
+
+<CardGroup cols={2}>
+  <Card title="Platform API" icon="code" href="/api/reference/introduction">
+    Programmatically manage organizations, projects, sites, secrets, firewall rules, members, and deployments.
+  </Card>
+  <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
+    Manage local and remote Docker Compose environments, inspect logs, trigger rollouts, and use app-aware plugins.
+  </Card>
+  <Card title="GitHub integration" icon="github" href="/platform/github">
+    Managed or customer-owned repositories with transparent code review, task branches, and automated deployments.
+  </Card>
+  <Card title="Application templates" icon="boxes-stacked" href="/templates/app-support">
+    Standardized Docker Compose, Make, and Renovate patterns across every supported application.
+  </Card>
+</CardGroup>
+
+## One workload, laptop to production
+
+Every LibOps-supported application follows a single operational pattern. The Docker Compose file in your repository is the **exact same workload** we run in production.
+
+<Tip>
+A consistent workload means: no environmental toil, no "works on my machine" debugging, and no need to learn a separate deployment system for each application family. An engineer can move between OJS, Islandora, Drupal, and Omeka using the same tooling.
+</Tip>
+
+### Local development you'll recognize
+
+LibOps fits into your existing engineering practices. Clone the site repo, work with your own tools — no platform-specific runtime required.
+
+<CardGroup cols={2}>
+  <Card title="Zero-config environments" icon="docker">
+    Docker Compose is the only thing your team needs installed. Consistent setup across every workstation.
+  </Card>
+  <Card title="Test parity with CI" icon="vials">
+    The same tests CI runs are available locally via `make test`. If it passes on your machine, it passes in CI.
+  </Card>
+  <Card title="Standardized Make targets" icon="terminal">
+    Every repo includes `make build`, `make up`, `make lint`, and `make test`. Same targets, every app.
+  </Card>
+  <Card title="Operational precision" icon="sliders">
+    Use `sitectl` alongside your local tools to manage secrets, settings, and deployments without leaving the terminal.
+  </Card>
+</CardGroup>
+
+## Two ways changes ship
+
+LibOps gives engineers two equally first-class paths for getting work into production. Both end with the same review surface — a GitHub pull request and a preview environment.
+
+<Tabs>
+  <Tab title="Via the Task Agent" icon="wand-magic-sparkles">
+    For changes that start as a Dashboard or Slack request.
+
+    <Steps>
+      <Step title="Task assigned" icon="message">
+        A site manager (or you) defines the task on a specific site.
+      </Step>
+      <Step title="Branch implementation" icon="code-branch">
+        The Task Agent implements the change on a dedicated `task/*` branch.
+      </Step>
+      <Step title="Pull request opens" icon="github">
+        LibOps opens or updates a GitHub pull request for the change.
+      </Step>
+      <Step title="Preview environment" icon="globe">
+        The change deploys to an ephemeral preview environment automatically.
+      </Step>
+      <Step title="Engineering review" icon="magnifying-glass-chart">
+        You inspect the diff in GitHub against security and architectural standards.
+      </Step>
+      <Step title="Validation and merge" icon="rocket">
+        Once you approve and stakeholders validate the preview, the change merges and rolls out.
+      </Step>
+    </Steps>
+
+    <Tip>
+    Mention `@libops` in a GitHub PR comment and the agent will iterate based on your feedback — pushing new commits to the same branch.
+    </Tip>
+  </Tab>
+
+  <Tab title="Working locally" icon="laptop-code">
+    For changes engineers prefer to write directly with their own tools.
+
+    <Steps>
+      <Step title="Clone and branch" icon="github">
+        Standard `git clone`, `git checkout -b`. Your existing workflow.
+      </Step>
+      <Step title="Run the stack locally" icon="docker">
+        `make build && make up` — same Compose project that runs in production.
+      </Step>
+      <Step title="Edit, test, push" icon="code">
+        Make the change. `make test` runs the same suite as CI.
+      </Step>
+      <Step title="Open a PR" icon="code-pull-request">
+        LibOps automatically provisions a preview environment for your branch.
+      </Step>
+      <Step title="Merge to roll out" icon="rocket">
+        Standard rollout pipeline from there — no special hand-off.
+      </Step>
+    </Steps>
+
+    <Tip>
+    `sitectl` connects your local Compose context to remote sites — handy for pulling logs, managing secrets, or port-forwarding into production for debugging.
+    </Tip>
+  </Tab>
+</Tabs>
+
+## API resource hierarchy
+
+The LibOps API mirrors the platform's logical resource model.
+
+<CardGroup cols={2}>
+  <Card title="Organizations" icon="building-columns">
+    The institution, department, or program.
+  </Card>
+  <Card title="Projects" icon="folder-tree">
+    Related sites and applications grouped together.
+  </Card>
+  <Card title="Sites" icon="globe">
+    Individual running environments — production, staging, review.
+  </Card>
+  <Card title="Resources" icon="layer-group">
+    Settings, secrets, members, firewall rules, deployments — applied at the level you choose.
+  </Card>
+</CardGroup>
+
+The API integrates cleanly with provisioning systems, service catalogs, and automated security reviews.
+
+## sitectl day-to-day
+
+Engineers reach for `sitectl` when work needs repository or terminal-level access.
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key">
+    Manage API keys and OAuth sessions.
+  </Card>
+  <Card title="Resource management" icon="sliders">
+    Configure site-level settings, secrets, and firewall rules.
+  </Card>
+  <Card title="Environment switching" icon="arrows-left-right">
+    Move between local and remote Docker Compose contexts with one flag.
+  </Card>
+  <Card title="Operational tasks" icon="terminal">
+    View remote logs, port-forward services for debugging, trigger production rollouts.
+  </Card>
+  <Card title="App-aware plugins" icon="puzzle-piece">
+    Use stack-specific commands for Drupal, OJS, Islandora, and others.
+  </Card>
+  <Card title="One workflow" icon="layer-group">
+    Same CLI, every supported application family.
+  </Card>
+</CardGroup>
+
+## Service boundaries
+
+<Warning>
+LibOps is in **Beta** and serves GLAM institutions, colleges, and universities in the United States and Canada. Production workloads are limited to the supported templates documented here. Running unrelated workloads on managed infrastructure is strictly prohibited and is grounds for account termination. See the [Terms of Service](https://www.libops.io/terms/) for details.
+</Warning>
+
+## Related documentation
+
+<CardGroup cols={2}>
+  <Card title="API & sitectl CLI" icon="terminal" href="/platform/api-cli">
+    The full philosophy + reference for integrating LibOps technically.
+  </Card>
+  <Card title="Why Docker Compose" icon="docker" href="/platform/why-docker-compose">
+    The reasoning behind the platform's Compose-first design.
+  </Card>
+  <Card title="Slack integration" icon="slack" href="/platform/slack">
+    Use the LibOps Task Agent from your Slack workspace.
+  </Card>
+  <Card title="GitHub integration" icon="github" href="/platform/github">
+    Repository options, permissions, and collaborator sync.
+  </Card>
+  <Card title="Automation backplane" icon="webhook" href="/platform/automation-backplane">
+    Webhook-driven automation for CI/CD and security scanners.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/introduction">
+    Full documentation for the `sitectl` command-line tool.
+  </Card>
+</CardGroup>
