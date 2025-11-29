@@ -1,0 +1,519 @@
+---
+title: 'Firewall Rules'
+description: 'Manage firewall rules with sitectl'
+---
+
+## Overview
+
+Firewall rules provide IP-based access control for your LibOps resources. Rules can be scoped to organizations, projects, or individual sites, allowing you to control access at different levels of your infrastructure.
+
+## Firewall Scopes
+
+Firewall rules can be created at three levels:
+
+- **Organization-level**: Apply to all projects and sites in an organization
+- **Project-level**: Apply to all sites in a project
+- **Site-level**: Apply only to a specific site
+
+## List Firewall Rules
+
+View firewall rules at different scopes:
+
+```bash
+# Organization firewall rules
+sitectl list firewall --organization-id <org-id>
+
+# Project firewall rules
+sitectl list firewall --project-id <project-id>
+
+# Site firewall rules
+sitectl list firewall --site-id <site-id>
+```
+
+### Flags
+
+- `--organization-id`: List organization-level firewall rules
+- `--project-id`: List project-level firewall rules
+- `--site-id`: List site-level firewall rules
+- `--no-cache`: Fetch fresh data from API
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list firewall --site-id site_123abc
+
+# JSON format
+sitectl list firewall --site-id site_123abc --format json
+
+# Custom template
+sitectl list firewall --site-id site_123abc \
+  --format '{{.CIDR}} - {{.Description}}'
+```
+
+### Examples
+
+```bash
+# List all firewall rules for a site
+sitectl list firewall --site-id site_123abc
+
+# List project-wide rules
+sitectl list firewall --project-id proj_xyz789
+
+# List organization-wide rules
+sitectl list firewall --organization-id org_abc123
+
+# Find rules by CIDR pattern
+sitectl list firewall --site-id site_123abc --format json | \
+  jq '.[] | select(.CIDR | contains("192.168"))'
+```
+
+## Create Firewall Rule
+
+Create a new firewall rule at the appropriate scope:
+
+```bash
+# Organization rule
+sitectl create firewall \
+  --organization-id <org-id> \
+  --cidr "203.0.113.0/24" \
+  --description "Office network"
+
+# Project rule
+sitectl create firewall \
+  --project-id <project-id> \
+  --cidr "198.51.100.0/24" \
+  --description "VPN range"
+
+# Site rule
+sitectl create firewall \
+  --site-id <site-id> \
+  --cidr "192.0.2.100/32" \
+  --description "Admin workstation"
+```
+
+### Required Flags
+
+One of:
+- `--organization-id`: Create organization-level rule
+- `--project-id`: Create project-level rule
+- `--site-id`: Create site-level rule
+
+And:
+- `--cidr`: IP address or CIDR range (e.g., "192.0.2.0/24" or "203.0.113.50/32")
+- `--description`: Description of the rule
+
+### CIDR Notation
+
+- **Single IP**: Use `/32` suffix (e.g., `192.0.2.100/32`)
+- **IP Range**: Use CIDR notation (e.g., `192.0.2.0/24` for 192.0.2.0-192.0.2.255)
+- **IPv6**: Supported (e.g., `2001:db8::/32`)
+
+### Examples
+
+```bash
+# Allow office network (organization-wide)
+sitectl create firewall \
+  --organization-id org_abc123 \
+  --cidr "203.0.113.0/24" \
+  --description "Corporate office network"
+
+# Allow VPN (project-wide)
+sitectl create firewall \
+  --project-id proj_xyz789 \
+  --cidr "198.51.100.0/24" \
+  --description "Company VPN range"
+
+# Allow specific admin IP (site-specific)
+sitectl create firewall \
+  --site-id site_123abc \
+  --cidr "192.0.2.100/32" \
+  --description "Admin workstation - John Doe"
+
+# Allow multiple IPs
+sitectl create firewall \
+  --site-id site_123abc \
+  --cidr "192.0.2.101/32" \
+  --description "Admin workstation - Jane Smith"
+
+sitectl create firewall \
+  --site-id site_123abc \
+  --cidr "192.0.2.102/32" \
+  --description "Admin workstation - DevOps team lead"
+
+# Allow entire subnet
+sitectl create firewall \
+  --project-id proj_xyz789 \
+  --cidr "10.0.0.0/16" \
+  --description "Internal infrastructure network"
+```
+
+## Delete Firewall Rule
+
+Delete a firewall rule:
+
+```bash
+sitectl delete firewall <rule-id>
+```
+
+<Warning>
+Deleting a firewall rule immediately removes access for affected IPs. Ensure no critical services depend on it.
+</Warning>
+
+<Note>
+Firewall rules cannot be edited. Delete and recreate instead.
+</Note>
+
+### Examples
+
+```bash
+# Delete firewall rule
+sitectl delete firewall rule_xyz123
+
+# Confirm before deletion
+read -p "Delete firewall rule rule_xyz123? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sitectl delete firewall rule_xyz123
+fi
+```
+
+## Complete Workflow Example
+
+```bash
+# Get site ID
+SITE_ID=$(sitectl list sites --format json | jq -r '.[0].ID')
+
+# Add firewall rules for various access points
+echo "Creating firewall rules..."
+
+# Office network
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "203.0.113.0/24" \
+  --description "Main office network"
+
+# Remote office
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "198.51.100.0/24" \
+  --description "Remote office network"
+
+# VPN users
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "192.0.2.0/24" \
+  --description "VPN user pool"
+
+# Individual admin workstations
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "203.0.113.50/32" \
+  --description "CTO workstation"
+
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "203.0.113.51/32" \
+  --description "DevOps lead workstation"
+
+# CI/CD server
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "198.51.100.100/32" \
+  --description "Jenkins CI server"
+
+# List all rules
+echo "\nAll firewall rules:"
+sitectl list firewall --site-id $SITE_ID
+
+# Remove a rule
+echo "\nRemoving old rule..."
+OLD_RULE_ID=$(sitectl list firewall --site-id $SITE_ID --format json | \
+  jq -r '.[] | select(.Description | contains("old")) | .ID' | head -1)
+
+if [ ! -z "$OLD_RULE_ID" ]; then
+  sitectl delete firewall $OLD_RULE_ID
+  echo "Removed old rule: $OLD_RULE_ID"
+fi
+```
+
+## Best Practices
+
+<Tip>
+**Use descriptive descriptions**: Include location, purpose, and owner (e.g., "NYC Office - Engineering team")
+</Tip>
+
+<Warning>
+**Don't block yourself**: Always maintain at least one rule for your own access before removing others
+</Warning>
+
+<Note>
+**Layer your security**: Use organization rules for company-wide access, project rules for team access, site rules for specific needs
+</Note>
+
+### Recommendations
+
+1. **Scope appropriately**: Organization for company-wide, project for team, site for specific access
+2. **Document thoroughly**: Include location, team, or person in descriptions
+3. **Use smallest CIDR**: Grant access only to necessary IP ranges (/32 for single IPs)
+4. **Regular audits**: Review and remove unused firewall rules periodically
+5. **Emergency access**: Maintain organization-level rules for emergency access
+6. **VPN preferred**: Use VPN with firewall rules rather than exposing to public internet
+
+## Common Firewall Patterns
+
+### Office Networks
+
+```bash
+ORG_ID="org_abc123"
+
+# Corporate headquarters
+sitectl create firewall \
+  --organization-id $ORG_ID \
+  --cidr "203.0.113.0/24" \
+  --description "HQ - San Francisco office"
+
+# Regional offices
+sitectl create firewall \
+  --organization-id $ORG_ID \
+  --cidr "198.51.100.0/24" \
+  --description "Regional - New York office"
+
+sitectl create firewall \
+  --organization-id $ORG_ID \
+  --cidr "192.0.2.0/24" \
+  --description "Regional - London office"
+```
+
+### VPN and Remote Access
+
+```bash
+PROJECT_ID="proj_xyz789"
+
+# VPN server pool
+sitectl create firewall \
+  --project-id $PROJECT_ID \
+  --cidr "10.8.0.0/16" \
+  --description "OpenVPN user pool"
+
+# Cloud VPN gateway
+sitectl create firewall \
+  --project-id $PROJECT_ID \
+  --cidr "172.16.0.1/32" \
+  --description "AWS VPN gateway"
+```
+
+### Development and CI/CD
+
+```bash
+SITE_ID="site_123abc"
+
+# CI/CD servers
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "198.51.100.100/32" \
+  --description "Jenkins primary"
+
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "198.51.100.101/32" \
+  --description "GitLab CI runner"
+
+# Developer workstations
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "192.0.2.0/24" \
+  --description "Developer workstation pool"
+```
+
+### Multi-Environment Strategy
+
+```bash
+ORG_ID="org_abc123"
+STAGING_PROJECT="proj_staging"
+PROD_PROJECT="proj_production"
+
+# Organization-wide: Office access to all environments
+sitectl create firewall \
+  --organization-id $ORG_ID \
+  --cidr "203.0.113.0/24" \
+  --description "Office network - All environments"
+
+# Staging: Open to developers
+sitectl create firewall \
+  --project-id $STAGING_PROJECT \
+  --cidr "192.0.2.0/24" \
+  --description "Developer VPN - Staging only"
+
+# Production: Restricted access
+sitectl create firewall \
+  --project-id $PROD_PROJECT \
+  --cidr "203.0.113.50/32" \
+  --description "DevOps lead only - Production"
+
+sitectl create firewall \
+  --project-id $PROD_PROJECT \
+  --cidr "198.51.100.100/32" \
+  --description "Production CI/CD - Production only"
+```
+
+## Firewall Hierarchy
+
+Rules inherit down the hierarchy: Organization → Project → Site
+
+Access is granted if ANY rule matches (rules are additive):
+
+```bash
+# Organization rule: Everyone in company can access
+sitectl create firewall \
+  --organization-id org_abc123 \
+  --cidr "203.0.113.0/24" \
+  --description "Company-wide office access"
+
+# Project rule: Project team can also access
+sitectl create firewall \
+  --project-id proj_xyz789 \
+  --cidr "192.0.2.0/24" \
+  --description "Project team VPN"
+
+# Site rule: Site admin can also access
+sitectl create firewall \
+  --site-id site_123abc \
+  --cidr "198.51.100.50/32" \
+  --description "Site administrator home IP"
+
+# Result: Access granted if IP matches ANY of the above rules
+```
+
+## Audit and Compliance
+
+### List All Firewall Rules
+
+```bash
+#!/bin/bash
+
+ORG_ID="org_abc123"
+
+echo "=== Firewall Audit Report ==="
+echo ""
+
+# Organization rules
+echo "Organization-Level Rules:"
+sitectl list firewall --organization-id $ORG_ID \
+  --format 'table {{.CIDR}}\t{{.Description}}'
+echo ""
+
+# Project rules
+echo "Project-Level Rules:"
+for PROJECT_ID in $(sitectl list projects --organization-id $ORG_ID --format json | jq -r '.[].ID'); do
+  PROJECT_NAME=$(sitectl get project $PROJECT_ID --format '{{.Name}}')
+  echo "  Project: $PROJECT_NAME"
+  sitectl list firewall --project-id $PROJECT_ID \
+    --format 'table {{.CIDR}}\t{{.Description}}' | sed 's/^/    /'
+  echo ""
+done
+
+# Site rules
+echo "Site-Level Rules:"
+for SITE_ID in $(sitectl list sites --organization-id $ORG_ID --format json | jq -r '.[].ID'); do
+  SITE_NAME=$(sitectl get site $SITE_ID --format '{{.Name}}')
+  echo "  Site: $SITE_NAME"
+  sitectl list firewall --site-id $SITE_ID \
+    --format 'table {{.CIDR}}\t{{.Description}}' | sed 's/^/    /'
+  echo ""
+done
+```
+
+### Cleanup Unused Rules
+
+```bash
+# List all rules with descriptions containing "temp" or "test"
+SITE_ID="site_123abc"
+
+sitectl list firewall --site-id $SITE_ID --format json | \
+  jq -r '.[] | select(.Description | test("temp|test"; "i")) | .ID' | \
+  while read -r RULE_ID; do
+    echo "Found temporary rule: $RULE_ID"
+    read -p "Delete this rule? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      sitectl delete firewall $RULE_ID
+      echo "Deleted $RULE_ID"
+    fi
+  done
+```
+
+## Troubleshooting
+
+### Cannot Access Resource
+
+Check if your IP is allowed:
+
+```bash
+# Get your current IP
+MY_IP=$(curl -s https://api.ipify.org)
+echo "Your IP: $MY_IP"
+
+# Check firewall rules
+sitectl list firewall --site-id site_123abc --format '{{.CIDR}}'
+```
+
+### Rule Not Taking Effect
+
+Firewall rules may take a few moments to propagate. Wait 30-60 seconds after creation.
+
+### Cannot Create Rule
+
+Ensure you have appropriate permissions:
+
+```bash
+# Check site membership
+sitectl list members --site-id site_123abc
+
+# Check project membership
+sitectl list members --project-id proj_xyz789
+
+# Check organization membership
+sitectl list members --organization-id org_abc123
+```
+
+### Overlapping Rules
+
+Overlapping CIDR ranges are allowed. Access is granted if ANY rule matches.
+
+## Output Fields
+
+Available fields for custom templates and JSON output:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique rule identifier |
+| `CIDR` | string | IP address or CIDR range |
+| `Description` | string | Rule description |
+| `OrganizationID` | string | Organization ID (if org-scoped) |
+| `ProjectID` | string | Project ID (if project-scoped) |
+| `SiteID` | string | Site ID (if site-scoped) |
+| `CreatedAt` | timestamp | Creation timestamp |
+
+### Custom Template Examples
+
+```bash
+# List just CIDRs
+sitectl list firewall --site-id site_123abc --format '{{.CIDR}}'
+
+# CIDR with description
+sitectl list firewall --site-id site_123abc \
+  --format '{{.CIDR}} - {{.Description}}'
+
+# Table with custom columns
+sitectl list firewall --site-id site_123abc \
+  --format 'table {{.CIDR}}\t{{.Description}}\t{{.CreatedAt}}'
+
+# JSON processing
+sitectl list firewall --site-id site_123abc --format json | \
+  jq '.[] | {cidr: .CIDR, desc: .Description, id: .ID}'
+
+# Sort by CIDR
+sitectl list firewall --site-id site_123abc --format json | \
+  jq 'sort_by(.CIDR)'
+```
