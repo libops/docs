@@ -1,0 +1,158 @@
+---
+title: 'Contexts'
+description: 'Understanding and managing sitectl contexts'
+---
+
+## What is a Context?
+
+A sitectl context represents a Docker Compose site running in a specific location. Each context contains configuration details for connecting to and managing that environment.
+
+## Context Types
+
+### Local Contexts
+
+Local contexts are for Docker Compose sites running on your local machine.
+
+**Create a local context**:
+```bash
+sitectl config set-context mysite \
+  --type local \
+  --project-dir /path/to/project \
+  --profile default \
+  --env-file .env \
+  --default
+```
+
+**Parameters**:
+- `--type local`: Specifies this is a local context
+- `--project-dir`: Path to the directory containing docker-compose.yml
+- `--profile`: Docker Compose profile to use
+- `--env-file`: Path to environment file(s)
+- `--default`: Set as the default context
+
+### Remote Contexts
+
+Remote contexts are for Docker Compose sites running on remote servers accessed via SSH.
+
+**Create a remote context**:
+```bash
+sitectl config set-context production \
+  --type remote \
+  --hostname prod.example.com \
+  --ssh-user deploy \
+  --ssh-port 22 \
+  --ssh-key ~/.ssh/id_rsa \
+  --project-dir /var/www/mysite \
+  --profile production \
+  --docker-socket /var/run/docker.sock
+```
+
+**Parameters**:
+- `--type remote`: Specifies this is a remote context
+- `--hostname`: Remote server hostname or IP
+- `--ssh-user`: SSH username
+- `--ssh-port`: SSH port (default: 22)
+- `--ssh-key`: Path to SSH private key
+- `--project-dir`: Project directory on remote server
+- `--profile`: Docker Compose profile to use
+- `--docker-socket`: Path to Docker socket on remote server
+
+## Managing Contexts
+
+### List All Contexts
+
+```bash
+sitectl config get-contexts
+```
+
+Output:
+```
+* local (type: local)
+  production (type: remote)
+  staging (type: remote)
+```
+
+The asterisk (*) indicates the currently active context.
+
+### View Current Context
+
+```bash
+sitectl config current-context
+```
+
+### Switch Contexts
+
+```bash
+sitectl config use-context production
+```
+
+### View Configuration
+
+```bash
+sitectl config view
+```
+
+### Update a Context
+
+To update an existing context, use `set-context` with the same name:
+
+```bash
+sitectl config set-context production \
+  --profile updated-profile
+```
+
+### Delete a Context
+
+```bash
+sitectl config delete-context staging
+```
+
+<Note>
+You cannot delete the currently active context. Switch to another context first.
+</Note>
+
+## Using Contexts
+
+### Override Context for a Single Command
+
+Use the `--context` flag to temporarily use a different context:
+
+```bash
+sitectl compose ps --context production
+```
+
+### Context Configuration File
+
+Contexts are stored in `~/.sitectl/config.yaml`. You can view this file with:
+
+```bash
+sitectl config view
+```
+
+## Best Practices
+
+1. **Use descriptive names**: Name contexts based on their environment (e.g., `local`, `staging`, `production`)
+2. **Set a default**: Always have a default context set for convenience
+3. **Secure SSH keys**: Ensure SSH keys used for remote contexts have appropriate permissions (600)
+4. **Document profiles**: Keep track of which Docker Compose profiles are used in each context
+5. **Environment files**: Use separate `.env` files for each environment
+
+## Example Workflow
+
+```bash
+# Set up contexts for different environments
+sitectl config set-context local --type local --project-dir ~/myapp --profile dev --default
+sitectl config set-context stage --type remote --hostname stage.example.com --ssh-user deploy --ssh-key ~/.ssh/id_rsa --project-dir /var/www/app --profile staging
+sitectl config set-context prod --type remote --hostname prod.example.com --ssh-user deploy --ssh-key ~/.ssh/id_rsa --project-dir /var/www/app --profile production
+
+# Work on local development
+sitectl compose up
+sitectl compose logs -f
+
+# Check staging status
+sitectl compose ps --context stage
+
+# Deploy to production
+sitectl compose pull --context prod
+sitectl compose up --context prod
+```

@@ -1,0 +1,36 @@
+---
+title: 'Introduction'
+description: 'LibOps API Reference'
+---
+
+## Welcome
+
+The LibOps API allows you to manage your infrastructure programmatically. You can create and manage organizations, projects, sites, secrets, firewall rules, and more.
+
+<Card
+  title="OpenAPI Specification"
+  icon="code"
+  href="/api/reference/openapi.yaml"
+>
+  View the full OpenAPI specification file
+</Card>
+
+## Authentication
+
+All API requests must be authenticated using a Bearer token. You can generate an API key from your account settings or via the CLI.
+
+```bash
+Authorization: Bearer <your_api_key>
+```
+
+## Base URL
+
+The base URL for the API is:
+
+```
+https://api.libops.io/v1
+```
+
+## Response Format
+
+All responses are returned in JSON format.

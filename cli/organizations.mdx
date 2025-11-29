@@ -1,0 +1,319 @@
+---
+title: 'Organizations'
+description: 'Manage organizations with sitectl'
+---
+
+## Overview
+
+Organizations are the top-level resource in LibOps. They serve as containers for projects, sites, and team members. Each organization can have its own secrets, firewall rules, and member access controls.
+
+## List Organizations
+
+View all organizations you have access to:
+
+```bash
+sitectl list organizations
+```
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list organizations
+
+# JSON format
+sitectl list organizations --format json
+
+# Custom template
+sitectl list organizations --format '{{.Name}} ({{.ID}})'
+```
+
+### Disable Cache
+
+Force fresh data from the API:
+
+```bash
+sitectl list organizations --no-cache
+```
+
+## Create Organization
+
+Create a new organization:
+
+```bash
+sitectl create organization \
+  --name "ACME Corporation" \
+  --description "Production infrastructure for ACME"
+```
+
+### Required Flags
+
+- `--name`: Organization name (required)
+
+### Optional Flags
+
+- `--description`: Organization description
+
+### Examples
+
+```bash
+# Minimal organization
+sitectl create organization --name "My Org"
+
+# With description
+sitectl create organization \
+  --name "DevOps Team" \
+  --description "Infrastructure for development and operations"
+
+# Capture the ID for further use
+ORG_ID=$(sitectl create organization \
+  --name "New Org" \
+  --format json | jq -r '.id')
+```
+
+## Get Organization
+
+Retrieve details about a specific organization:
+
+```bash
+sitectl get organization <organization-id>
+```
+
+### Examples
+
+```bash
+# Get organization details
+sitectl get organization org_abc123
+
+# Get as JSON
+sitectl get organization org_abc123 --format json
+
+# Extract specific field
+sitectl get organization org_abc123 --format '{{.Name}}'
+```
+
+## Edit Organization
+
+Update an existing organization:
+
+```bash
+sitectl edit organization <organization-id> \
+  --name "Updated Name" \
+  --description "Updated description"
+```
+
+### Available Flags
+
+- `--name`: Update organization name
+- `--description`: Update organization description
+
+### Examples
+
+```bash
+# Update name only
+sitectl edit organization org_abc123 \
+  --name "ACME Corp - Rebranded"
+
+# Update description only
+sitectl edit organization org_abc123 \
+  --description "New mission statement"
+
+# Update both
+sitectl edit organization org_abc123 \
+  --name "New Name" \
+  --description "New description"
+```
+
+## Delete Organization
+
+Delete an organization:
+
+```bash
+sitectl delete organization <organization-id>
+```
+
+<Warning>
+Deleting an organization will also delete all associated projects, sites, secrets, firewall rules, and member assignments. This action cannot be undone.
+</Warning>
+
+### Examples
+
+```bash
+# Delete organization
+sitectl delete organization org_abc123
+
+# Confirm before deletion (use shell confirmation)
+read -p "Are you sure? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sitectl delete organization org_abc123
+fi
+```
+
+## Complete Workflow Example
+
+```bash
+# Create a new organization
+echo "Creating organization..."
+ORG_ID=$(sitectl create organization \
+  --name "ACME Corporation" \
+  --description "Main production organization" \
+  --format json | jq -r '.id')
+
+echo "Created organization: $ORG_ID"
+
+# View organization details
+sitectl get organization $ORG_ID
+
+# List all organizations
+echo "\nAll organizations:"
+sitectl list organizations
+
+# Update organization
+sitectl edit organization $ORG_ID \
+  --description "Updated: Main production and staging infrastructure"
+
+# Verify update
+echo "\nUpdated organization:"
+sitectl get organization $ORG_ID
+
+# Create projects within organization (see Projects documentation)
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Web Applications" \
+  --description "Customer-facing web apps"
+```
+
+## Best Practices
+
+<Tip>
+**Use descriptive names**: Include company name or department to make organizations easily identifiable
+</Tip>
+
+<Note>
+**Organization hierarchy**: Organizations are the top level. Structure your resources as: Organization → Projects → Sites
+</Note>
+
+### Recommendations
+
+1. **One organization per company/department**: Keep organizational boundaries clear
+2. **Use descriptions**: Document the purpose and scope of each organization
+3. **Plan before deletion**: Review all nested resources before deleting an organization
+4. **Consistent naming**: Establish a naming convention for your organizations
+5. **Regular audits**: Periodically review organizations and clean up unused ones
+
+## Integration with Other Resources
+
+### Create Complete Infrastructure
+
+```bash
+# 1. Create organization
+ORG_ID=$(sitectl create organization \
+  --name "ACME Corp" \
+  --format json | jq -r '.id')
+
+# 2. Add organization-level secrets
+sitectl create secrets \
+  --organization-id $ORG_ID \
+  --key "SHARED_API_KEY" \
+  --value "sk_live_abc123"
+
+# 3. Add organization firewall rules
+sitectl create firewall \
+  --organization-id $ORG_ID \
+  --cidr "203.0.113.0/24" \
+  --description "Corporate office network"
+
+# 4. Add organization members
+sitectl create members \
+  --organization-id $ORG_ID \
+  --email "admin@acme.com" \
+  --role "admin"
+
+# 5. Create projects within organization
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Production Apps"
+```
+
+### List All Resources in Organization
+
+```bash
+ORG_ID="org_abc123"
+
+echo "Projects:"
+sitectl list projects --organization-id $ORG_ID
+
+echo "\nSites:"
+sitectl list sites --organization-id $ORG_ID
+
+echo "\nSecrets:"
+sitectl list secrets --organization-id $ORG_ID
+
+echo "\nFirewall Rules:"
+sitectl list firewall --organization-id $ORG_ID
+
+echo "\nMembers:"
+sitectl list members --organization-id $ORG_ID
+```
+
+## Troubleshooting
+
+### Organization Not Found
+
+```bash
+# Verify organization exists
+sitectl list organizations
+
+# Check organization ID format
+sitectl get organization org_abc123
+```
+
+### Permission Denied
+
+Ensure you have appropriate permissions:
+
+```bash
+# Check your authentication
+sitectl whoami
+
+# Verify you're a member
+sitectl list members --organization-id org_abc123
+```
+
+### Cannot Delete Organization
+
+Organizations can only be deleted if you're an admin:
+
+```bash
+# Check your role
+sitectl list members --organization-id org_abc123 | grep $(whoami)
+```
+
+## Output Fields
+
+When using custom templates or JSON output, these fields are available:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique organization identifier |
+| `Name` | string | Organization name |
+| `Description` | string | Organization description |
+| `CreatedAt` | timestamp | Creation timestamp |
+| `UpdatedAt` | timestamp | Last update timestamp |
+
+### Custom Template Examples
+
+```bash
+# Simple list
+sitectl list organizations --format '{{.Name}}'
+
+# Name with ID
+sitectl list organizations --format '{{.Name}} ({{.ID}})'
+
+# Table with custom columns
+sitectl list organizations --format 'table {{.ID}}\t{{.Name}}\t{{.Description}}'
+
+# JSON processing with jq
+sitectl list organizations --format json | jq '.[] | {name: .Name, id: .ID}'
+```

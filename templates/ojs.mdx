@@ -1,0 +1,456 @@
+---
+title: 'Open Journal Systems (OJS)'
+description: 'Deploy OJS on LibOps with Docker Compose'
+---
+
+## Overview
+
+[Open Journal Systems (OJS)](https://github.com/libops/ojs) is a comprehensive platform for managing academic publishing workflows. This LibOps template provides a fully containerized deployment of OJS, making it easy to run your own scholarly journal publishing platform.
+
+<Card
+  title="View on GitHub"
+  icon="github"
+  href="https://github.com/libops/ojs"
+>
+  Access the OJS template repository
+</Card>
+
+## Features
+
+### Automated Installation
+- OJS installs automatically on first startup
+- No manual configuration required for basic setup
+- Default admin account created automatically
+
+### Secret Management
+- Secure random generation of passwords and encryption keys
+- Secrets stored separately from code
+- Admin password generated and stored in `./secrets/OJS_ADMIN_PASSWORD`
+
+### Plugin Support
+Extensible architecture supporting custom plugins across multiple categories:
+- Blocks
+- Gateways
+- Generic plugins
+- Import/Export
+- Metadata
+- OAI formats
+- Payment methods
+- Public IDs
+- Reports
+- Themes
+
+### Data Persistence
+Docker volumes maintain persistent data for:
+- Database
+- Cache
+- Uploaded files
+- Public assets
+
+### Flexible Configuration
+Highly customizable through environment variables:
+- Locale settings
+- Timezone configuration
+- Session lifetime
+- OAI-PMH settings
+- Version selection via build arguments
+
+## Technology Stack
+
+- **Web Server**: nginx (based on Islandora Buildkit base image)
+- **Database**: MariaDB
+- **Application**: OJS (configurable version)
+- **Container Runtime**: Docker Compose
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- LibOps account ([sign up](https://api.libops.io/login))
+- Basic familiarity with Docker Compose
+
+### Step 1: Clone the Template
+
+```bash
+git clone https://github.com/libops/ojs.git my-journal
+cd my-journal
+```
+
+### Step 2: Generate Secrets
+
+```bash
+docker compose up init
+```
+
+This creates random passwords and encryption keys stored in `./secrets/`.
+
+### Step 3: Start Services
+
+```bash
+docker compose up -d
+```
+
+OJS will automatically install on first startup.
+
+### Step 4: Access Your Journal
+
+Navigate to `http://localhost` in your browser.
+
+### Default Admin Credentials
+
+- **Username**: `admin` (configurable via environment variables)
+- **Password**: See `./secrets/OJS_ADMIN_PASSWORD`
+- **Email**: `admin@example.com` (configurable)
+
+## Deploy to LibOps
+
+### Step 1: Create Infrastructure
+
+```bash
+# Authenticate
+sitectl login
+
+# Create organization and project
+ORG_ID=$(sitectl create organization \
+  --name "My Publishing House" \
+  --format json | jq -r '.id')
+
+PROJECT_ID=$(sitectl create project \
+  --organization-id $ORG_ID \
+  --name "OJS Journals" \
+  --format json | jq -r '.id')
+
+# Create site
+SITE_ID=$(sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "my-journal" \
+  --domain "journal.example.com" \
+  --format json | jq -r '.id')
+```
+
+### Step 2: Add Secrets
+
+```bash
+# Add admin credentials
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "OJS_ADMIN_USER" \
+  --value "admin"
+
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "OJS_ADMIN_EMAIL" \
+  --value "admin@example.com"
+
+# Database credentials
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "MYSQL_ROOT_PASSWORD" \
+  --value "your-secure-password"
+
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "MYSQL_DATABASE" \
+  --value "ojs"
+```
+
+### Step 3: Configure Remote Context
+
+```bash
+sitectl config set-context production \
+  --type remote \
+  --hostname your-server.example.com \
+  --ssh-user deploy \
+  --ssh-key ~/.ssh/id_rsa \
+  --project-dir /var/www/ojs \
+  --profile production \
+  --default
+```
+
+### Step 4: Deploy
+
+```bash
+# Pull latest images
+sitectl compose pull --context production
+
+# Start services
+sitectl compose up --context production
+
+# Check status
+sitectl compose ps --context production
+```
+
+## Configuration
+
+### Environment Variables
+
+Key environment variables you can customize in your `.env` file:
+
+```bash
+# Admin Account
+OJS_ADMIN_USER=admin
+OJS_ADMIN_EMAIL=admin@example.com
+
+# Locale and Timezone
+OJS_LOCALE=en_US
+OJS_TIMEZONE=America/New_York
+
+# Session Configuration
+OJS_SESSION_LIFETIME=86400
+
+# Database
+MYSQL_ROOT_PASSWORD=secure-password
+MYSQL_DATABASE=ojs
+MYSQL_USER=ojs
+MYSQL_PASSWORD=ojs-password
+
+# OAI-PMH Settings
+OJS_OAI_REPOSITORY_ID=journal.example.com
+```
+
+### Version Selection
+
+Specify the OJS version during build:
+
+```bash
+docker compose build --build-arg OJS_VERSION=3.4.0
+```
+
+## Common Tasks
+
+### View Logs
+
+```bash
+# All services
+sitectl compose logs -f
+
+# OJS application only
+sitectl compose logs -f ojs
+
+# Database
+sitectl compose logs -f db
+```
+
+### Access Database
+
+```bash
+# Forward database to local port
+sitectl port-forward 3306:db:3306
+
+# Connect with local client
+mysql -h 127.0.0.1 -P 3306 -u ojs -p
+```
+
+### Install Plugins
+
+Plugins can be added to the appropriate directory:
+
+```
+/path/to/ojs/
+├── plugins/
+│   ├── blocks/
+│   ├── gateways/
+│   ├── generic/
+│   ├── importexport/
+│   ├── metadata/
+│   ├── oaiMetadataFormats/
+│   ├── paymethod/
+│   ├── pubIds/
+│   ├── reports/
+│   └── themes/
+```
+
+After adding plugins, restart the OJS service:
+
+```bash
+sitectl compose restart ojs
+```
+
+### Backup Data
+
+```bash
+# Backup database
+sitectl compose exec db mysqldump -u root -p ojs > backup-$(date +%Y%m%d).sql
+
+# Backup uploaded files
+sitectl compose exec ojs tar -czf /tmp/files-backup.tar.gz /var/www/files
+sitectl compose cp ojs:/tmp/files-backup.tar.gz ./files-backup-$(date +%Y%m%d).tar.gz
+```
+
+### Update OJS
+
+```bash
+# Pull latest image
+sitectl compose pull ojs
+
+# Restart with new image
+sitectl compose up -d ojs
+```
+
+## Architecture
+
+### Services
+
+**ojs**: The OJS application container
+- nginx web server
+- PHP-FPM
+- OJS application code
+
+**db**: MariaDB database
+- Persistent storage for journals, articles, users
+- Automated backups recommended
+
+### Volumes
+
+- `db_data`: Database files
+- `ojs_files`: Uploaded article files and assets
+- `ojs_public`: Public files and downloads
+- `ojs_cache`: Application cache
+
+### Networking
+
+Services communicate over a private Docker network. Only the OJS web interface is exposed externally.
+
+## Troubleshooting
+
+### OJS Won't Start
+
+Check logs for errors:
+
+```bash
+sitectl compose logs ojs
+```
+
+Common issues:
+- Database not ready: Wait for `db` service to be healthy
+- File permissions: Ensure volumes have correct ownership
+- Port conflicts: Check if port 80/443 is already in use
+
+### Database Connection Errors
+
+Verify database credentials match between:
+- `.env` file
+- `docker-compose.yml`
+- OJS configuration
+
+### Reset Admin Password
+
+```bash
+# Access OJS container
+sitectl compose exec ojs bash
+
+# Use OJS CLI to reset password
+cd /var/www/html
+php tools/resetPassword.php admin
+```
+
+### Performance Issues
+
+Consider:
+- Increasing PHP memory limit in `.env`
+- Enabling OJS caching
+- Adding Redis for session storage
+- Optimizing MariaDB configuration
+
+## Production Recommendations
+
+<Warning>
+**Security**: Always change default passwords and enable HTTPS for production deployments
+</Warning>
+
+### Essential Security Steps
+
+1. **Change all default passwords** in secrets
+2. **Enable HTTPS** with valid SSL certificates
+3. **Configure firewall rules**:
+   ```bash
+   sitectl create firewall \
+     --site-id $SITE_ID \
+     --cidr "0.0.0.0/0" \
+     --description "Public access"
+   ```
+4. **Regular backups** of database and files
+5. **Update regularly** to patch security vulnerabilities
+
+### Performance Optimization
+
+- Use external database for high-traffic journals
+- Enable CDN for static assets
+- Configure caching (OPcache, Redis)
+- Optimize MariaDB for your workload
+
+### Monitoring
+
+- Set up health checks for all services
+- Monitor disk usage (logs and uploads)
+- Track database performance
+- Monitor application errors
+
+## Support
+
+<CardGroup cols={2}>
+  <Card
+    title="OJS Documentation"
+    icon="book"
+    href="https://docs.pkp.sfu.ca/learning-ojs/"
+  >
+    Official OJS documentation and guides
+  </Card>
+
+  <Card
+    title="GitHub Issues"
+    icon="github"
+    href="https://github.com/libops/ojs/issues"
+  >
+    Report issues or request features
+  </Card>
+
+  <Card
+    title="LibOps Support"
+    icon="life-ring"
+    href="mailto:info@libops.io"
+  >
+    Get help with LibOps deployment
+  </Card>
+
+  <Card
+    title="PKP Community"
+    icon="users"
+    href="https://forum.pkp.sfu.ca/"
+  >
+    Join the OJS community forum
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Customize Your Journal"
+    icon="palette"
+  >
+    Install themes and plugins to customize the look and functionality
+  </Card>
+
+  <Card
+    title="Configure Editorial Workflow"
+    icon="sitemap"
+  >
+    Set up review stages, editorial roles, and submission guidelines
+  </Card>
+
+  <Card
+    title="Import Content"
+    icon="file-import"
+  >
+    Use import plugins to migrate existing journal content
+  </Card>
+
+  <Card
+    title="Set Up Indexing"
+    icon="search"
+  >
+    Configure OAI-PMH for indexing in academic databases
+  </Card>
+</CardGroup>

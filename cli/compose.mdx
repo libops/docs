@@ -1,0 +1,274 @@
+---
+title: 'Docker Compose'
+description: 'Run Docker Compose commands with sitectl'
+---
+
+## Overview
+
+The `sitectl compose` command wraps Docker Compose and automatically applies context-specific configuration including profiles, environment files, and project directories.
+
+## Basic Usage
+
+```bash
+sitectl compose [docker-compose-command] [flags]
+```
+
+All standard Docker Compose commands and flags are supported. The command automatically injects:
+- `--profile` flag based on your context
+- `--env-file` flags for configured environment files
+- Working directory set to your project directory
+
+## Automatic Behaviors
+
+sitectl enhances Docker Compose with smart defaults:
+
+### `compose up`
+Automatically adds `-d --remove-orphans` if not already specified:
+```bash
+sitectl compose up
+# Runs: docker compose --profile [profile] up -d --remove-orphans
+```
+
+### `compose build`
+Automatically adds `--pull` to ensure fresh base images:
+```bash
+sitectl compose build
+# Runs: docker compose --profile [profile] build --pull
+```
+
+## Common Commands
+
+### Start Services
+
+```bash
+# Start all services in detached mode
+sitectl compose up
+
+# Start specific service
+sitectl compose up nginx
+
+# Force recreate containers
+sitectl compose up --force-recreate
+```
+
+### Stop Services
+
+```bash
+# Stop all services
+sitectl compose down
+
+# Stop without removing containers
+sitectl compose stop
+
+# Stop specific service
+sitectl compose stop nginx
+```
+
+### View Logs
+
+```bash
+# Follow all logs
+sitectl compose logs -f
+
+# Follow logs for specific service
+sitectl compose logs -f nginx
+
+# Show last 100 lines
+sitectl compose logs --tail=100
+```
+
+### List Containers
+
+```bash
+# List running containers
+sitectl compose ps
+
+# Show all containers (including stopped)
+sitectl compose ps -a
+```
+
+### Execute Commands
+
+```bash
+# Open shell in container
+sitectl compose exec nginx bash
+
+# Run one-off command
+sitectl compose exec nginx ls -la /etc/nginx
+
+# Run as specific user
+sitectl compose exec --user www-data nginx whoami
+```
+
+### Build Images
+
+```bash
+# Build all services
+sitectl compose build
+
+# Build specific service
+sitectl compose build nginx
+
+# Build without cache
+sitectl compose build --no-cache
+```
+
+### Manage Containers
+
+```bash
+# Restart services
+sitectl compose restart
+
+# Restart specific service
+sitectl compose restart nginx
+
+# Pause services
+sitectl compose pause
+
+# Unpause services
+sitectl compose unpause
+```
+
+### Pull Images
+
+```bash
+# Pull all images
+sitectl compose pull
+
+# Pull specific service image
+sitectl compose pull nginx
+```
+
+### Scale Services
+
+```bash
+# Scale a service to multiple replicas
+sitectl compose scale worker=3
+```
+
+### View Configuration
+
+```bash
+# Show resolved docker-compose.yml
+sitectl compose config
+
+# Validate configuration
+sitectl compose config --quiet
+```
+
+## Working with Different Contexts
+
+### Use Default Context
+
+```bash
+sitectl compose up
+```
+
+### Override Context
+
+```bash
+sitectl compose ps --context production
+sitectl compose logs -f --context staging
+```
+
+## Examples
+
+### Local Development Workflow
+
+```bash
+# Start services
+sitectl compose up
+
+# Watch logs
+sitectl compose logs -f app
+
+# Run database migrations
+sitectl compose exec app php artisan migrate
+
+# Rebuild after code changes
+sitectl compose build app
+sitectl compose up --force-recreate app
+
+# Clean up
+sitectl compose down
+```
+
+### Remote Production Deployment
+
+```bash
+# Pull latest images on production
+sitectl compose pull --context production
+
+# Restart services with new images
+sitectl compose up --context production --force-recreate
+
+# Check service status
+sitectl compose ps --context production
+
+# View recent logs
+sitectl compose logs --tail=50 --context production
+```
+
+### Debugging
+
+```bash
+# Check container status
+sitectl compose ps
+
+# View service logs
+sitectl compose logs -f nginx
+
+# Inspect service configuration
+sitectl compose config --services
+
+# View container resource usage
+sitectl compose stats
+
+# Check service health
+sitectl compose ps | grep healthy
+```
+
+## Advanced Usage
+
+### Multiple Environment Files
+
+Contexts can specify multiple environment files:
+```bash
+sitectl config set-context mysite \
+  --env-file .env \
+  --env-file .env.local \
+  --env-file secrets.env
+```
+
+### Custom Profiles
+
+Use different profiles for different purposes:
+```bash
+# Set development profile
+sitectl config set-context dev --profile development
+
+# Set production profile with minimal services
+sitectl config set-context prod --profile production
+```
+
+### Working Directory
+
+The compose command automatically runs from your configured project directory:
+```bash
+sitectl config set-context mysite --project-dir /path/to/project
+sitectl compose up  # Runs from /path/to/project
+```
+
+## Tips
+
+<Tip>
+Use `sitectl compose --help` to see all available Docker Compose commands
+</Tip>
+
+<Warning>
+The `compose up` command runs in detached mode by default. Use `sitectl compose logs -f` to watch output.
+</Warning>
+
+<Note>
+All Docker Compose flags and options work as expected. sitectl simply adds context-aware configuration on top.
+</Note>

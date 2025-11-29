@@ -1,0 +1,178 @@
+---
+title: 'Terraform Provider'
+description: 'Infrastructure as Code for LibOps'
+---
+
+## Coming Soon
+
+The LibOps Terraform Provider is currently in development and will be available soon.
+
+### What to Expect
+
+The Terraform Provider will enable you to manage your entire LibOps infrastructure as code:
+
+```hcl
+# Example of what's coming
+terraform {
+  required_providers {
+    libops = {
+      source  = "libops/libops"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "libops" {
+  api_url = "https://api.libops.io"
+}
+
+resource "libops_organization" "main" {
+  name        = "ACME Corporation"
+  description = "Main production infrastructure"
+}
+
+resource "libops_project" "web" {
+  organization_id = libops_organization.main.id
+  name            = "Web Applications"
+  description     = "Customer-facing web apps"
+}
+
+resource "libops_site" "production" {
+  project_id  = libops_project.web.id
+  name        = "production-web"
+  domain      = "www.acme.com"
+  description = "Production website"
+}
+
+resource "libops_secret" "database_url" {
+  site_id = libops_site.production.id
+  key     = "DATABASE_URL"
+  value   = var.database_url
+}
+
+resource "libops_firewall_rule" "office" {
+  site_id     = libops_site.production.id
+  cidr        = "203.0.113.0/24"
+  description = "Office network"
+}
+
+resource "libops_member" "admin" {
+  site_id = libops_site.production.id
+  email   = "admin@acme.com"
+  role    = "admin"
+}
+```
+
+### Planned Features
+
+<CardGroup cols={2}>
+  <Card title="Full Resource Coverage" icon="check">
+    Manage organizations, projects, sites, secrets, firewall rules, and members
+  </Card>
+
+  <Card title="Data Sources" icon="database">
+    Query existing resources and use them in your Terraform configurations
+  </Card>
+
+  <Card title="State Management" icon="layer-group">
+    Track infrastructure changes with Terraform state
+  </Card>
+
+  <Card title="Import Support" icon="download">
+    Import existing LibOps resources into Terraform
+  </Card>
+</CardGroup>
+
+### Use the API Today
+
+While waiting for the Terraform Provider, you can manage LibOps infrastructure using:
+
+<CardGroup cols={2}>
+  <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
+    Command-line tool for managing LibOps resources
+  </Card>
+
+  <Card title="REST API" icon="code" href="/api/reference/introduction">
+    Direct API access for custom automation
+  </Card>
+</CardGroup>
+
+## Stay Updated
+
+Want to be notified when the Terraform Provider is released?
+
+<Card
+  title="Contact Us"
+  icon="envelope"
+  href="mailto:info@libops.io?subject=Terraform Provider Updates"
+>
+  Send us an email to get on the notification list
+</Card>
+
+### Current Alternatives
+
+#### Using the API with Terraform
+
+You can use Terraform's `http` provider to interact with the LibOps API today:
+
+```hcl
+terraform {
+  required_providers {
+    http = {
+      source = "hashicorp/http"
+      version = "~> 3.0"
+    }
+  }
+}
+
+locals {
+  api_url = "https://api.libops.io"
+  api_token = var.libops_api_token
+}
+
+# Create an organization
+resource "null_resource" "organization" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      curl -X POST ${local.api_url}/v1/organizations \
+        -H "Authorization: Bearer ${local.api_token}" \
+        -H "Content-Type: application/json" \
+        -d '{"name":"ACME Corp","description":"Main infrastructure"}'
+    EOT
+  }
+}
+```
+
+#### Using sitectl in Terraform
+
+You can also call sitectl from Terraform:
+
+```hcl
+resource "null_resource" "create_site" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      sitectl create site \
+        --project-id ${var.project_id} \
+        --name production-web \
+        --domain www.acme.com \
+        --format json
+    EOT
+  }
+}
+```
+
+<Note>
+These are temporary workarounds. The official Terraform Provider will provide proper resource management, state tracking, and drift detection.
+</Note>
+
+## Questions?
+
+Have questions or feature requests for the Terraform Provider?
+
+<Card
+  title="GitHub Discussions"
+  icon="github"
+  href="https://github.com/libops"
+>
+  Join the conversation on GitHub
+</Card>

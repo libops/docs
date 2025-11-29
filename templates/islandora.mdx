@@ -1,0 +1,628 @@
+---
+title: 'Islandora (ISLE)'
+description: 'Deploy Islandora digital repository on LibOps'
+---
+
+## Overview
+
+[Islandora Site Template (ISLE)](https://github.com/libops/isle-site-template) provides a complete Docker-based deployment for building and customizing your Islandora digital repository installation. Islandora is a powerful open-source framework for managing digital collections, special collections, and institutional repositories.
+
+<Card
+  title="View on GitHub"
+  icon="github"
+  href="https://github.com/libops/isle-site-template"
+>
+  Access the Islandora ISLE template repository
+</Card>
+
+## Features
+
+### Complete Digital Repository Stack
+
+Pre-configured services for a full Islandora installation:
+- **MariaDB**: Backend database
+- **Solr**: Search and indexing
+- **Fedora Commons (fcrepo)**: Digital object repository
+- **Crayfish**: Microservices architecture
+- **Blazegraph**: Triple store for linked data
+- **FITS**: File format identification and metadata extraction
+- **Drupal**: Content management system
+
+### Docker-Based Deployment
+
+- Single-server deployment architecture
+- Container orchestration with Docker Compose
+- Isolated services for security and scalability
+- Easy development-to-production workflow
+
+### Institutional Customization
+
+- Template-based approach for independent management
+- No upstream fork dependencies
+- Version control your entire repository
+- Separate development and production configurations
+
+### Development Tools
+
+- Automated setup script
+- TLS/SSL support for development
+- mkcert integration for local certificates
+- Hot-reload for theme development
+
+## Technology Stack
+
+- **CMS**: Drupal (single-site installation)
+- **Repository**: Fedora Commons
+- **Search**: Apache Solr
+- **Database**: MariaDB
+- **Triple Store**: Blazegraph
+- **Microservices**: Crayfish
+- **Web Server**: nginx/Apache
+- **License**: MIT
+
+## Quick Start
+
+### Prerequisites
+
+- Docker 24.0 or higher
+- Docker Compose
+- mkcert 1.4+
+- cURL and git
+- Minimum 8GB RAM recommended
+
+### Automated Setup
+
+The fastest way to get started:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Islandora-Devops/isle-site-template/main/setup.sh)"
+```
+
+This script will:
+1. Create a new project directory
+2. Download and extract the template
+3. Install the Islandora starter site
+4. Generate development certificates
+5. Configure environment variables
+6. Start all services
+
+### Manual Setup
+
+For more control over the setup process:
+
+#### Step 1: Clone Template
+
+```bash
+# Create empty repository on your Git platform first
+git clone your-empty-repo.git my-islandora
+cd my-islandora
+
+# Download and extract template
+curl -L https://github.com/Islandora-Devops/isle-site-template/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=1
+```
+
+#### Step 2: Install Islandora Starter Site
+
+```bash
+# Download starter site to Drupal directory
+curl -L https://github.com/Islandora/islandora-starter-site/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=1 -C drupal
+```
+
+#### Step 3: Configure Environment
+
+Create and customize your `.env` file:
+
+```bash
+cp sample.env .env
+```
+
+Edit `.env` with your project details:
+
+```bash
+# Project Configuration
+COMPOSE_PROJECT_NAME=my-islandora
+DOMAIN=islandora.local
+
+# Admin Email
+ADMIN_EMAIL=admin@example.com
+
+# Docker Registry (optional)
+DOCKER_REPOSITORY=myregistry.example.com
+```
+
+#### Step 4: Generate Certificates (Development)
+
+```bash
+make certs
+```
+
+#### Step 5: Generate Secrets
+
+```bash
+make secrets
+```
+
+#### Step 6: Start Services
+
+```bash
+docker compose up -d
+```
+
+## Deploy to LibOps
+
+### Step 1: Create Infrastructure
+
+```bash
+# Authenticate
+sitectl login
+
+# Create organization and project
+ORG_ID=$(sitectl create organization \
+  --name "My Institution" \
+  --format json | jq -r '.id')
+
+PROJECT_ID=$(sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Digital Collections" \
+  --format json | jq -r '.id')
+
+# Create site
+SITE_ID=$(sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "islandora" \
+  --domain "collections.example.edu" \
+  --format json | jq -r '.id')
+```
+
+### Step 2: Add Secrets
+
+```bash
+# Database credentials
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "MYSQL_ROOT_PASSWORD" \
+  --value "secure-root-password"
+
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "DRUPAL_DATABASE_PASSWORD" \
+  --value "secure-drupal-password"
+
+# Fedora credentials
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "FEDORA_ADMIN_PASSWORD" \
+  --value "secure-fedora-password"
+
+# Drupal admin
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "DRUPAL_ADMIN_PASSWORD" \
+  --value "secure-admin-password"
+```
+
+### Step 3: Configure Remote Context
+
+```bash
+sitectl config set-context production \
+  --type remote \
+  --hostname collections.example.edu \
+  --ssh-user deploy \
+  --ssh-key ~/.ssh/id_rsa \
+  --project-dir /var/www/islandora \
+  --profile production \
+  --default
+```
+
+### Step 4: Deploy
+
+```bash
+# Pull images
+sitectl compose pull --context production
+
+# Start all services
+sitectl compose up --context production
+
+# Check status
+sitectl compose ps --context production
+
+# Run Drupal installation
+sitectl compose exec drupal drush site:install -y
+```
+
+## Configuration
+
+### Environment Variables
+
+Critical settings in `.env`:
+
+```bash
+# Project Identity
+COMPOSE_PROJECT_NAME=my-islandora
+DOMAIN=collections.example.edu
+ADMIN_EMAIL=admin@example.edu
+
+# Database
+MYSQL_ROOT_PASSWORD=secure-password
+DRUPAL_DATABASE_NAME=drupal
+DRUPAL_DATABASE_USER=drupal
+DRUPAL_DATABASE_PASSWORD=secure-drupal-password
+
+# Fedora
+FEDORA_ADMIN_USER=admin
+FEDORA_ADMIN_PASSWORD=secure-fedora-password
+
+# Drupal
+DRUPAL_ADMIN_USER=admin
+DRUPAL_ADMIN_PASSWORD=secure-admin-password
+
+# Storage
+FEDORA_STORAGE_DIR=/var/www/fedora/data
+```
+
+### Service Ports
+
+Default ports (can be customized):
+- **Drupal**: 80, 443
+- **Fedora**: 8080
+- **Solr**: 8983
+- **Blazegraph**: 8081
+- **MariaDB**: 3306
+
+## Architecture
+
+### Services Overview
+
+**drupal**: Drupal CMS
+- Content management
+- User interface
+- Islandora modules
+
+**mariadb**: Database
+- Drupal configuration and content
+- User accounts
+- Metadata
+
+**solr**: Search indexing
+- Full-text search
+- Faceted browsing
+- Metadata indexing
+
+**fcrepo**: Fedora Commons
+- Digital object storage
+- Binary file management
+- Preservation repository
+
+**blazegraph**: Triple store
+- RDF metadata
+- Linked data
+- Semantic relationships
+
+**crayfish**: Microservices
+- Image processing
+- Derivative generation
+- File format conversion
+
+**fits**: Format identification
+- Technical metadata extraction
+- File format validation
+- Preservation planning
+
+### Data Persistence
+
+Volumes for persistent data:
+- `drupal_sites`: Drupal files and configuration
+- `mysql_data`: Database
+- `fedora_data`: Digital objects
+- `solr_data`: Search indexes
+- `blazegraph_data`: RDF triple store
+
+## Common Tasks
+
+### Access Drupal Admin
+
+```bash
+# Get admin login link
+sitectl compose exec drupal drush user:login
+```
+
+### Import Digital Objects
+
+```bash
+# Using Islandora Workbench
+sitectl compose exec drupal drush islandora:import /path/to/metadata.csv
+```
+
+### Reindex Solr
+
+```bash
+# Rebuild search index
+sitectl compose exec drupal drush search-api:reindex
+sitectl compose exec drupal drush search-api:index
+```
+
+### Generate Derivatives
+
+```bash
+# Regenerate all derivatives for an object
+sitectl compose exec drupal drush islandora:regenerate-derivatives node/123
+```
+
+### Database Backup
+
+```bash
+# Export Drupal database
+sitectl compose exec drupal drush sql:dump > backup-$(date +%Y%m%d).sql
+
+# Or use mysqldump
+sitectl port-forward 3306:mariadb:3306
+mysqldump -h 127.0.0.1 -P 3306 -u drupal -p drupal > backup-$(date +%Y%m%d).sql
+```
+
+### Update Drupal
+
+```bash
+# Update Drupal core and modules
+sitectl compose exec drupal composer update
+
+# Run database updates
+sitectl compose exec drupal drush updatedb
+
+# Clear caches
+sitectl compose exec drupal drush cache:rebuild
+```
+
+### View Logs
+
+```bash
+# All services
+sitectl compose logs -f
+
+# Specific service
+sitectl compose logs -f drupal
+sitectl compose logs -f fedora
+sitectl compose logs -f solr
+```
+
+## Development Workflow
+
+### Local Development
+
+```bash
+# Configure local context
+sitectl config set-context local \
+  --type local \
+  --project-dir ~/projects/my-islandora \
+  --env-file .env.local \
+  --default
+
+# Start services
+sitectl compose up
+
+# Enable development modules
+sitectl compose exec drupal drush en devel kint
+```
+
+### Theme Development
+
+```bash
+# Watch for theme changes
+sitectl compose exec drupal npm run watch --prefix /var/www/drupal/web/themes/custom/mytheme
+
+# Clear theme cache
+sitectl compose exec drupal drush cache:rebuild
+```
+
+### Module Development
+
+```bash
+# Install custom module
+sitectl compose exec drupal composer require drupal/mymodule
+
+# Enable module
+sitectl compose exec drupal drush en mymodule -y
+
+# Export configuration
+sitectl compose exec drupal drush config:export -y
+```
+
+## Troubleshooting
+
+### Services Won't Start
+
+Check service health:
+
+```bash
+sitectl compose ps
+sitectl compose logs
+```
+
+Common issues:
+- Port conflicts: Ensure ports 80, 443, 8080, etc. are available
+- Memory: Increase Docker memory allocation to 8GB+
+- Disk space: Check available disk space for volumes
+
+### Drupal Installation Fails
+
+```bash
+# Check database connection
+sitectl compose exec drupal drush status
+
+# Verify database credentials in .env
+# Reset and retry installation
+sitectl compose exec drupal drush site:install -y
+```
+
+### Fedora Connection Errors
+
+Verify Fedora is running:
+
+```bash
+sitectl compose ps fcrepo
+sitectl compose logs fcrepo
+
+# Test Fedora endpoint
+curl http://localhost:8080/fcrepo/rest
+```
+
+### Solr Not Indexing
+
+```bash
+# Check Solr status
+curl http://localhost:8983/solr/admin/cores
+
+# Reindex content
+sitectl compose exec drupal drush search-api:reset
+sitectl compose exec drupal drush search-api:reindex
+sitectl compose exec drupal drush search-api:index
+```
+
+### Performance Issues
+
+Optimization steps:
+- Increase PHP memory limit
+- Enable Drupal caching
+- Configure Redis for caching
+- Optimize Solr configuration
+- Tune MariaDB settings
+
+## Production Recommendations
+
+<Warning>
+**Important**: This template is designed for single-server deployments. For high-availability production systems, consider clustering and load balancing.
+</Warning>
+
+### Security Best Practices
+
+1. **Change all default passwords** in `.env` and secrets
+2. **Enable HTTPS** with valid SSL certificates
+3. **Configure firewall rules**:
+   ```bash
+   # Allow public access to web interface
+   sitectl create firewall \
+     --site-id $SITE_ID \
+     --cidr "0.0.0.0/0" \
+     --description "Public web access"
+
+   # Restrict admin access
+   sitectl create firewall \
+     --site-id $SITE_ID \
+     --cidr "203.0.113.0/24" \
+     --description "Admin network"
+   ```
+4. **Regular security updates** for all services
+5. **Enable audit logging** in Drupal
+6. **Implement backup strategy** (see below)
+
+### Backup Strategy
+
+Implement comprehensive backups:
+
+```bash
+#!/bin/bash
+# Daily backup script
+
+DATE=$(date +%Y%m%d)
+
+# Database backup
+sitectl compose exec drupal drush sql:dump > backups/db-$DATE.sql
+
+# Drupal files
+sitectl compose exec drupal tar -czf /tmp/files-$DATE.tar.gz /var/www/drupal/web/sites/default/files
+sitectl compose cp drupal:/tmp/files-$DATE.tar.gz backups/
+
+# Fedora objects
+sitectl compose exec fcrepo tar -czf /tmp/fedora-$DATE.tar.gz /opt/fcrepo/data
+sitectl compose cp fcrepo:/tmp/fedora-$DATE.tar.gz backups/
+
+# Retain backups for 30 days
+find backups/ -name "*.sql" -mtime +30 -delete
+find backups/ -name "*.tar.gz" -mtime +30 -delete
+```
+
+### Monitoring
+
+Set up monitoring for:
+- Service health (all containers running)
+- Disk usage (Fedora storage grows over time)
+- Database performance
+- Solr index size
+- Application errors in Drupal watchdog
+
+### Performance Tuning
+
+- Configure Varnish or nginx caching
+- Enable Drupal page caching and aggregation
+- Use Redis for session storage and caching
+- Optimize images and derivatives
+- Configure CDN for static assets
+
+## Support
+
+<CardGroup cols={2}>
+  <Card
+    title="Islandora Documentation"
+    icon="book"
+    href="https://islandora.github.io/documentation/"
+  >
+    Official Islandora documentation
+  </Card>
+
+  <Card
+    title="ISLE Documentation"
+    icon="book"
+    href="https://islandora.github.io/documentation/installation/docker-local/"
+  >
+    ISLE installation and configuration guides
+  </Card>
+
+  <Card
+    title="GitHub Issues"
+    icon="github"
+    href="https://github.com/libops/isle-site-template/issues"
+  >
+    Report issues or request features
+  </Card>
+
+  <Card
+    title="Islandora Community"
+    icon="users"
+    href="https://groups.google.com/g/islandora"
+  >
+    Join the Islandora community
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Configure Collections"
+    icon="folder-tree"
+  >
+    Set up collection hierarchies and content models
+  </Card>
+
+  <Card
+    title="Customize Metadata"
+    icon="tags"
+  >
+    Configure metadata forms and RDF mappings
+  </Card>
+
+  <Card
+    title="Import Content"
+    icon="file-import"
+  >
+    Use Islandora Workbench to batch import objects
+  </Card>
+
+  <Card
+    title="Set Up Workflows"
+    icon="diagram-project"
+  >
+    Configure editorial and preservation workflows
+  </Card>
+</CardGroup>

@@ -1,80 +1,400 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Deploy your first Docker Compose application with LibOps"
 ---
 
-## Get started in three steps
+## Get started in four steps
 
-Get your documentation site running locally and make your first customization.
+Deploy your first site on LibOps and start managing your Docker Compose applications in the cloud.
 
-### Step 1: Set up your local environment
+### Step 1: Create your account
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion icon="user-plus" title="Sign up for LibOps">
+    You can create an account using either the CLI or web browser.
+
+    **Option A: Using sitectl CLI**
+
+    Install sitectl and authenticate:
+
+    ```bash
+    # Download sitectl (see CLI documentation for your platform)
+    curl -L https://github.com/libops/sitectl/releases/latest/download/sitectl_linux_amd64 -o sitectl
+    chmod +x sitectl
+    sudo mv sitectl /usr/local/bin/
+
+    # Login or register
+    sitectl login
+    ```
+
+    This will open your browser where you can:
+    - Sign in with Google
+    - Or create an account with email/password
+
+    **Option B: Using your browser**
+
+    Visit [https://api.libops.io/login](https://api.libops.io/login) to:
+    - Sign in with Google
+    - Or register with email/password
+
+    <Tip>After logging in via browser, run `sitectl login` to authenticate your CLI.</Tip>
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion icon="terminal" title="Verify authentication">
+    Confirm you're logged in:
+
+    ```bash
+    sitectl whoami
+    ```
+
+    You should see your authentication status and token information.
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+### Step 2: Create your infrastructure
 
 <AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Accordion icon="building" title="Create an organization">
+    Organizations are the top-level container for all your resources.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    sitectl create organization \
+      --name "My Company" \
+      --description "Production infrastructure"
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
+    Save the organization ID from the output, or retrieve it later:
+
+    ```bash
+    # List all organizations
+    sitectl list organizations
+
+    # Get organization ID as JSON
+    ORG_ID=$(sitectl list organizations --format json | jq -r '.[0].ID')
+    echo $ORG_ID
+    ```
+  </Accordion>
+
+  <Accordion icon="folder" title="Create a project">
+    Projects group related sites together within an organization.
+
+    ```bash
+    # Replace with your organization ID
+    sitectl create project \
+      --organization-id org_abc123 \
+      --name "Production Apps" \
+      --description "Customer-facing applications"
+    ```
+
+    Or capture the project ID automatically:
+
+    ```bash
+    PROJECT_ID=$(sitectl create project \
+      --organization-id $ORG_ID \
+      --name "Production Apps" \
+      --description "Customer-facing applications" \
+      --format json | jq -r '.id')
+
+    echo "Created project: $PROJECT_ID"
+    ```
+  </Accordion>
+
+  <Accordion icon="globe" title="Create a site">
+    Sites represent individual Docker Compose deployments.
+
+    ```bash
+    # Replace with your project ID
+    sitectl create site \
+      --project-id proj_xyz789 \
+      --name "web-app" \
+      --domain "app.example.com" \
+      --description "Main web application"
+    ```
+
+    Or capture the site ID:
+
+    ```bash
+    SITE_ID=$(sitectl create site \
+      --project-id $PROJECT_ID \
+      --name "web-app" \
+      --domain "app.example.com" \
+      --description "Main web application" \
+      --format json | jq -r '.id')
+
+    echo "Created site: $SITE_ID"
+    ```
+
+    <Tip>Keep your site ID handy - you'll need it for adding secrets and configuring access.</Tip>
   </Accordion>
 </AccordionGroup>
 
-### Step 3: Go live
+### Step 3: Configure your site
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<AccordionGroup>
+  <Accordion icon="key" title="Add secrets">
+    Store your application's sensitive configuration as encrypted secrets.
+
+    ```bash
+    # Database credentials
+    sitectl create secrets \
+      --site-id site_123abc \
+      --key "DATABASE_URL" \
+      --value "postgresql://user:password@db.example.com/myapp"
+
+    # API keys
+    sitectl create secrets \
+      --site-id site_123abc \
+      --key "STRIPE_SECRET_KEY" \
+      --value "sk_live_abc123xyz"
+
+    # Application secrets
+    sitectl create secrets \
+      --site-id site_123abc \
+      --key "APP_SECRET" \
+      --value "your-secret-key-here"
+    ```
+
+    <Note>Secret values are encrypted and never displayed after creation.</Note>
+  </Accordion>
+
+  <Accordion icon="shield" title="Add firewall rules (optional)">
+    Control who can access your site with IP-based firewall rules.
+
+    ```bash
+    # Allow office network
+    sitectl create firewall \
+      --site-id site_123abc \
+      --cidr "203.0.113.0/24" \
+      --description "Office network"
+
+    # Allow specific admin IP
+    sitectl create firewall \
+      --site-id site_123abc \
+      --cidr "192.0.2.100/32" \
+      --description "Admin workstation"
+    ```
+  </Accordion>
+
+  <Accordion icon="users" title="Add team members (optional)">
+    Invite team members to collaborate on your site.
+
+    ```bash
+    # Add an admin
+    sitectl create members \
+      --site-id site_123abc \
+      --email "admin@example.com" \
+      --role "admin"
+
+    # Add a developer
+    sitectl create members \
+      --site-id site_123abc \
+      --email "developer@example.com" \
+      --role "developer"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Step 4: Deploy your application
+
+<AccordionGroup>
+  <Accordion icon="server" title="Configure a remote context">
+    Set up a remote context to connect to your deployment server.
+
+    ```bash
+    sitectl config set-context production \
+      --type remote \
+      --hostname prod.example.com \
+      --ssh-user deploy \
+      --ssh-port 22 \
+      --ssh-key ~/.ssh/id_rsa \
+      --project-dir /var/www/app \
+      --profile production \
+      --default
+    ```
+
+    <Tip>Make sure your SSH key has access to the remote server.</Tip>
+  </Accordion>
+
+  <Accordion icon="rocket" title="Deploy with Docker Compose">
+    Deploy your application using Docker Compose commands through sitectl.
+
+    ```bash
+    # Pull latest images
+    sitectl compose pull --context production
+
+    # Start services
+    sitectl compose up --context production
+
+    # Check status
+    sitectl compose ps --context production
+
+    # View logs
+    sitectl compose logs -f --context production
+    ```
+
+    sitectl automatically:
+    - Connects to your remote server via SSH
+    - Applies the correct Docker Compose profile
+    - Injects environment files
+    - Runs commands in the correct directory
+  </Accordion>
+
+  <Accordion icon="laptop-code" title="Or set up local development">
+    Alternatively, configure a local context for development work.
+
+    ```bash
+    sitectl config set-context local \
+      --type local \
+      --project-dir ~/my-app \
+      --profile development \
+      --env-file .env.local \
+      --default
+
+    # Start local services
+    sitectl compose up
+
+    # View logs
+    sitectl compose logs -f
+
+    # Run commands in containers
+    sitectl compose exec app bash
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete example workflow
+
+Here's a complete example that creates everything from scratch:
+
+```bash
+# 1. Login
+sitectl login
+
+# 2. Create organization
+ORG_ID=$(sitectl create organization \
+  --name "ACME Corporation" \
+  --description "Main production infrastructure" \
+  --format json | jq -r '.id')
+
+echo "Organization ID: $ORG_ID"
+
+# 3. Create project
+PROJECT_ID=$(sitectl create project \
+  --organization-id $ORG_ID \
+  --name "E-commerce Platform" \
+  --description "Online store and APIs" \
+  --format json | jq -r '.id')
+
+echo "Project ID: $PROJECT_ID"
+
+# 4. Create site
+SITE_ID=$(sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "production-web" \
+  --domain "shop.acme.com" \
+  --description "Production storefront" \
+  --format json | jq -r '.id')
+
+echo "Site ID: $SITE_ID"
+
+# 5. Add secrets
+sitectl create secrets --site-id $SITE_ID --key "DATABASE_URL" --value "postgresql://..."
+sitectl create secrets --site-id $SITE_ID --key "REDIS_URL" --value "redis://..."
+sitectl create secrets --site-id $SITE_ID --key "API_KEY" --value "sk_live_..."
+
+# 6. Add firewall rules
+sitectl create firewall --site-id $SITE_ID --cidr "203.0.113.0/24" --description "Office"
+sitectl create firewall --site-id $SITE_ID --cidr "192.0.2.0/24" --description "VPN"
+
+# 7. Add team members
+sitectl create members --site-id $SITE_ID --email "admin@acme.com" --role "admin"
+sitectl create members --site-id $SITE_ID --email "dev@acme.com" --role "developer"
+
+# 8. Configure remote context
+sitectl config set-context production \
+  --type remote \
+  --hostname prod.acme.com \
+  --ssh-user deploy \
+  --ssh-key ~/.ssh/id_rsa \
+  --project-dir /var/www/shop \
+  --profile production
+
+# 9. Deploy
+sitectl compose pull --context production
+sitectl compose up --context production
+
+# 10. Check status
+sitectl compose ps --context production
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you have your first site deployed, explore these key features:
 
 <CardGroup cols={2}>
+  <Card title="Manage contexts" icon="layer-group" href="/cli/contexts">
+    Learn how to switch between local and remote environments
+  </Card>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Card title="Secrets management" icon="key" href="/cli/secrets">
+    Master hierarchical secrets and environment variables
+  </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+  <Card title="Port forwarding" icon="network-wired" href="/cli/port-forwarding">
+    Access remote services locally for debugging
+  </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+  <Card title="Docker Compose" icon="docker" href="/cli/compose">
+    Explore all Docker Compose integration features
+  </Card>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+  <Card title="API reference" icon="code" href="/api/reference/introduction">
+    Automate your infrastructure with the REST API
+  </Card>
 
+  <Card title="Team management" icon="users" href="/cli/members">
+    Add team members and configure role-based access
+  </Card>
 </CardGroup>
 
+## Common tasks
+
+### Access a remote database
+
+```bash
+# Forward PostgreSQL to local port
+sitectl port-forward 5432:postgres:5432 --context production
+
+# Connect with local tools
+psql -h localhost -p 5432 -U myuser mydb
+```
+
+### Update secrets
+
+```bash
+# List current secrets
+sitectl list secrets --site-id $SITE_ID
+
+# Update a secret value
+SECRET_ID=$(sitectl list secrets --site-id $SITE_ID --format json | \
+  jq -r '.[] | select(.Key == "API_KEY") | .ID')
+
+sitectl edit secret $SECRET_ID --value "new_secret_value"
+```
+
+### Check deployment logs
+
+```bash
+# Follow all logs
+sitectl compose logs -f --context production
+
+# Filter by service
+sitectl compose logs -f nginx --context production
+
+# Show last 100 lines
+sitectl compose logs --tail=100 --context production
+```
+
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  **Need help?** Visit our [CLI documentation](/cli/introduction) or [contact support](mailto:info@libops.io).
 </Note>

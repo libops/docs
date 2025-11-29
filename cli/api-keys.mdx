@@ -1,0 +1,67 @@
+---
+title: 'API Keys'
+description: 'Manage API keys for programmatic access'
+---
+
+## Overview
+
+API keys allow you to authenticate with the LibOps API programmatically. They are useful for CI/CD pipelines, scripts, and external integrations.
+
+## List API Keys
+
+List all active API keys associated with your account:
+
+```bash
+sitectl list apikeys
+```
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list apikeys
+
+# JSON format
+sitectl list apikeys --format json
+```
+
+## Create API Key
+
+Create a new API key.
+
+<Warning>
+**Save your API key immediately.** The key secret is only displayed once upon creation. If you lose it, you will need to create a new one.
+</Warning>
+
+```bash
+sitectl create apikey \
+  --name "CI Pipeline Key" \
+  --description "Key for GitHub Actions" \
+  --scopes "project:read,site:deploy"
+```
+
+### Flags
+
+- `--name`: (Required) A friendly name for the API key.
+- `--description`: (Optional) A description of the key's purpose.
+- `--scopes`: (Optional) A comma-separated list of scopes to limit the key's permissions (e.g., `organization:read`, `site:write`).
+
+## Delete (Revoke) API Key
+
+Revoke an API key to prevent further use:
+
+```bash
+sitectl delete apikey <api-key-id>
+```
+
+### Flags
+
+- `--yes` or `-y`: Skip confirmation prompt.
+
+### Examples
+
+```bash
+# Revoke an API key
+sitectl delete apikey apk_123abc
+```
+

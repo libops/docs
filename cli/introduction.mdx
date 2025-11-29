@@ -1,0 +1,78 @@
+---
+title: 'Introduction'
+description: 'Get started with sitectl, the LibOps CLI tool'
+---
+
+## Overview
+
+`sitectl` is a command-line interface for managing Docker Compose sites both locally and remotely. It provides context-aware configuration management, making it easy to interact with multiple environments.
+
+## Key Features
+
+- **Context Management**: Switch between local and remote Docker Compose environments
+- **Docker Compose Integration**: Seamlessly run Docker Compose commands with automatic configuration
+- **SSH Support**: Manage remote Docker environments over SSH
+- **Port Forwarding**: Access remote services locally
+- **API Integration**: Full access to LibOps API for resource management
+- **Authentication**: Secure OAuth-based authentication with API key support
+
+## Installation
+
+Download the latest release for your platform from the [GitHub releases page](https://github.com/libops/sitectl/releases).
+
+### macOS
+
+```bash
+# Download and install
+curl -L https://github.com/libops/sitectl/releases/latest/download/sitectl_darwin_amd64 -o sitectl
+chmod +x sitectl
+sudo mv sitectl /usr/local/bin/
+```
+
+### Linux
+
+```bash
+# Download and install
+curl -L https://github.com/libops/sitectl/releases/latest/download/sitectl_linux_amd64 -o sitectl
+chmod +x sitectl
+sudo mv sitectl /usr/local/bin/
+```
+
+### Verify Installation
+
+```bash
+sitectl --version
+```
+
+## Quick Start
+
+1. **Authenticate with LibOps API**:
+   ```bash
+   sitectl login
+   ```
+
+2. **Set up a local context**:
+   ```bash
+   sitectl config set-context local \
+     --type local \
+     --project-dir /path/to/your/project \
+     --profile default \
+     --default
+   ```
+
+3. **Run Docker Compose commands**:
+   ```bash
+   sitectl compose up
+   sitectl compose ps
+   sitectl compose logs -f
+   ```
+
+## Getting Help
+
+Get help for any command by adding the `--help` flag:
+
+```bash
+sitectl --help
+sitectl config --help
+sitectl compose --help
+```

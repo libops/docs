@@ -1,0 +1,523 @@
+---
+title: 'Sites'
+description: 'Manage sites with sitectl'
+---
+
+## Overview
+
+Sites represent individual Docker Compose deployments within a project. Each site can have its own domain, secrets, firewall rules, and team members.
+
+## List Sites
+
+View all sites you have access to:
+
+```bash
+# All sites across all projects
+sitectl list sites
+
+# Sites in a specific organization
+sitectl list sites --organization-id <org-id>
+
+# Sites in a specific project
+sitectl list sites --project-id <project-id>
+```
+
+### Flags
+
+- `--organization-id`: Filter sites by organization
+- `--project-id`: Filter sites by project
+- `--no-cache`: Fetch fresh data from API
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list sites
+
+# JSON format
+sitectl list sites --format json
+
+# Custom template
+sitectl list sites --format '{{.Name}} - {{.Domain}}'
+```
+
+### Examples
+
+```bash
+# List all sites
+sitectl list sites
+
+# List sites in organization
+sitectl list sites --organization-id org_abc123
+
+# List sites in project
+sitectl list sites --project-id proj_xyz789
+
+# Find sites by name pattern
+sitectl list sites --format json | jq '.[] | select(.Name | contains("prod"))'
+```
+
+## Get Site
+
+Retrieve details about a specific site:
+
+```bash
+sitectl get site <site-id>
+```
+
+### Examples
+
+```bash
+# Get site details
+sitectl get site site_123abc
+
+# Get as JSON
+sitectl get site site_123abc --format json
+
+# Extract specific fields
+sitectl get site site_123abc --format '{{.Name}}: {{.Domain}}'
+```
+
+## Create Site
+
+Create a new site within a project:
+
+```bash
+sitectl create site \
+  --project-id <project-id> \
+  --name "site-name" \
+  --domain "example.com" \
+  --description "Site description"
+```
+
+### Required Flags
+
+- `--project-id`: Parent project ID
+- `--name`: Site name (used for internal reference)
+
+### Optional Flags
+
+- `--domain`: Primary domain for the site
+- `--description`: Site description
+
+### Examples
+
+```bash
+# Minimal site
+sitectl create site \
+  --project-id proj_xyz789 \
+  --name "production-web"
+
+# With domain
+sitectl create site \
+  --project-id proj_xyz789 \
+  --name "storefront" \
+  --domain "shop.example.com"
+
+# Complete site creation
+sitectl create site \
+  --project-id proj_xyz789 \
+  --name "api-gateway" \
+  --domain "api.example.com" \
+  --description "Main API gateway for customer applications"
+
+# Capture site ID
+SITE_ID=$(sitectl create site \
+  --project-id proj_xyz789 \
+  --name "admin-portal" \
+  --domain "admin.example.com" \
+  --format json | jq -r '.id')
+
+echo "Created site: $SITE_ID"
+```
+
+## Edit Site
+
+Update an existing site:
+
+```bash
+sitectl edit site <site-id> \
+  --name "updated-name" \
+  --domain "new-domain.com" \
+  --description "Updated description"
+```
+
+### Available Flags
+
+- `--name`: Update site name
+- `--domain`: Update primary domain
+- `--description`: Update site description
+
+### Examples
+
+```bash
+# Update domain
+sitectl edit site site_123abc \
+  --domain "newdomain.com"
+
+# Update name and description
+sitectl edit site site_123abc \
+  --name "production-api" \
+  --description "Production API server v2"
+
+# Update all fields
+sitectl edit site site_123abc \
+  --name "updated-site" \
+  --domain "updated.example.com" \
+  --description "Migrated to new infrastructure"
+```
+
+## Delete Site
+
+Delete a site:
+
+```bash
+sitectl delete site <site-id>
+```
+
+<Warning>
+Deleting a site will also delete all associated secrets, firewall rules, and member assignments. This action cannot be undone.
+</Warning>
+
+### Examples
+
+```bash
+# Delete site
+sitectl delete site site_123abc
+
+# Confirm before deletion
+read -p "Delete site site_123abc? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sitectl delete site site_123abc
+fi
+```
+
+## Complete Workflow Example
+
+```bash
+# Get project ID
+PROJECT_ID=$(sitectl list projects --format json | jq -r '.[0].ID')
+
+# Create production site
+echo "Creating production site..."
+PROD_SITE=$(sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "production-web" \
+  --domain "www.example.com" \
+  --description "Production web application" \
+  --format json)
+
+SITE_ID=$(echo $PROD_SITE | jq -r '.id')
+echo "Created site: $SITE_ID"
+
+# View site details
+sitectl get site $SITE_ID
+
+# Add site-specific secrets
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "DATABASE_PASSWORD" \
+  --value "prod_secure_pass_123"
+
+sitectl create secrets \
+  --site-id $SITE_ID \
+  --key "API_KEY" \
+  --value "sk_live_abc123xyz"
+
+# Add firewall rules
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "203.0.113.0/24" \
+  --description "Office IP range"
+
+sitectl create firewall \
+  --site-id $SITE_ID \
+  --cidr "192.0.2.100/32" \
+  --description "Admin workstation"
+
+# Add site administrators
+sitectl create members \
+  --site-id $SITE_ID \
+  --email "siteadmin@example.com" \
+  --role "admin"
+
+# Create staging site with similar configuration
+STAGING_SITE=$(sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "staging-web" \
+  --domain "staging.example.com" \
+  --description "Staging web application" \
+  --format json)
+
+# List all sites in project
+echo "\nAll sites in project:"
+sitectl list sites --project-id $PROJECT_ID
+```
+
+## Site Operations
+
+In addition to CRUD operations, sites support deployment operations:
+
+### Deploy Site
+
+Trigger a deployment for a site. This is useful for deploying a specific git reference or re-deploying the current version.
+
+```bash
+sitectl deploy <site-id> [flags]
+```
+
+#### Flags
+
+- `--git-ref`: (Optional) The git reference (branch, tag, or commit SHA) to deploy. If not specified, uses the currently deployed reference.
+- `--watch` or `-w`: (Optional) Watch the deployment status until it succeeds or fails.
+
+#### Examples
+
+```bash
+# Deploy the default branch
+sitectl deploy site_123abc
+
+# Deploy a specific branch
+sitectl deploy site_123abc --git-ref main
+
+# Deploy a specific tag and watch progress
+sitectl deploy site_123abc --git-ref v1.2.0 --watch
+```
+
+### Get Site Status
+
+```bash
+# Check deployment status
+sitectl get site-status <site-id>
+```
+
+## Best Practices
+
+<Tip>
+**Use descriptive names**: Include environment and purpose in site names (e.g., "production-api", "staging-web")
+</Tip>
+
+<Note>
+**Domain management**: Keep domains updated to reflect current routing configuration
+</Note>
+
+### Recommendations
+
+1. **Naming convention**: Use consistent naming like `{environment}-{service}`
+2. **One site per service**: Each Docker Compose deployment should be a separate site
+3. **Domain accuracy**: Keep the domain field updated for documentation purposes
+4. **Environment separation**: Use different projects for dev, staging, and production sites
+5. **Documentation**: Use descriptions to note deployment details, dependencies, and contacts
+
+## Common Site Patterns
+
+### Multi-Environment Setup
+
+```bash
+PROJECT_ID="proj_xyz789"
+
+# Production
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "prod-api" \
+  --domain "api.example.com" \
+  --description "Production API server"
+
+# Staging
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "staging-api" \
+  --domain "api-staging.example.com" \
+  --description "Staging API server for testing"
+
+# Development
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "dev-api" \
+  --domain "api-dev.example.com" \
+  --description "Development API server"
+```
+
+### Microservices Architecture
+
+```bash
+PROJECT_ID="proj_xyz789"
+
+# Frontend
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "frontend-app" \
+  --domain "app.example.com" \
+  --description "React frontend application"
+
+# API Gateway
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "api-gateway" \
+  --domain "api.example.com" \
+  --description "API gateway and load balancer"
+
+# User Service
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "user-service" \
+  --domain "users.internal.example.com" \
+  --description "User management microservice"
+
+# Payment Service
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "payment-service" \
+  --domain "payments.internal.example.com" \
+  --description "Payment processing microservice"
+```
+
+## Integration with Other Resources
+
+### List All Resources for a Site
+
+```bash
+SITE_ID="site_123abc"
+
+echo "Site Details:"
+sitectl get site $SITE_ID
+
+echo "\nSecrets:"
+sitectl list secrets --site-id $SITE_ID
+
+echo "\nFirewall Rules:"
+sitectl list firewall --site-id $SITE_ID
+
+echo "\nMembers:"
+sitectl list members --site-id $SITE_ID
+```
+
+### Clone Site Configuration
+
+```bash
+# Get source site
+SOURCE_SITE=$(sitectl get site site_source123 --format json)
+
+# Create new site with same configuration
+NEW_SITE_ID=$(sitectl create site \
+  --project-id $(echo $SOURCE_SITE | jq -r '.ProjectID') \
+  --name "$(echo $SOURCE_SITE | jq -r '.Name')-clone" \
+  --domain "clone.$(echo $SOURCE_SITE | jq -r '.Domain')" \
+  --description "Clone of $(echo $SOURCE_SITE | jq -r '.Name')" \
+  --format json | jq -r '.id')
+
+echo "Created clone: $NEW_SITE_ID"
+echo "Note: Manually copy secrets, firewall rules, and members as needed"
+```
+
+### Audit Site Configuration
+
+```bash
+#!/bin/bash
+SITE_ID="site_123abc"
+
+echo "=== Site Audit Report ==="
+echo ""
+
+# Site details
+echo "Site Information:"
+sitectl get site $SITE_ID --format 'table {{.Name}}\t{{.Domain}}\t{{.Description}}'
+echo ""
+
+# Count resources
+SECRET_COUNT=$(sitectl list secrets --site-id $SITE_ID --format json | jq 'length')
+FIREWALL_COUNT=$(sitectl list firewall --site-id $SITE_ID --format json | jq 'length')
+MEMBER_COUNT=$(sitectl list members --site-id $SITE_ID --format json | jq 'length')
+
+echo "Resource Summary:"
+echo "  Secrets: $SECRET_COUNT"
+echo "  Firewall Rules: $FIREWALL_COUNT"
+echo "  Members: $MEMBER_COUNT"
+echo ""
+
+# List members with roles
+echo "Access Control:"
+sitectl list members --site-id $SITE_ID --format 'table {{.Email}}\t{{.Role}}'
+```
+
+## Troubleshooting
+
+### Site Not Found
+
+```bash
+# Verify site exists
+sitectl list sites
+
+# Check specific project
+sitectl list sites --project-id proj_xyz789
+
+# Verify site ID format
+sitectl get site site_123abc
+```
+
+### Cannot Create Site
+
+Ensure you have permission in the project:
+
+```bash
+# Check project membership
+sitectl list members --project-id proj_xyz789
+
+# Verify project exists
+sitectl get project proj_xyz789
+
+# Check authentication
+sitectl whoami
+```
+
+### Domain Conflicts
+
+Multiple sites can have the same domain (it's just metadata). Configure actual routing separately.
+
+### Cannot Delete Site
+
+Sites can only be deleted by users with appropriate permissions:
+
+```bash
+# Check your role
+sitectl list members --site-id site_123abc | grep $(whoami)
+
+# Or check project-level role
+sitectl list members --project-id proj_xyz789 | grep $(whoami)
+```
+
+## Output Fields
+
+Available fields for custom templates and JSON output:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique site identifier |
+| `Name` | string | Site name |
+| `Domain` | string | Primary domain |
+| `Description` | string | Site description |
+| `ProjectID` | string | Parent project ID |
+| `CreatedAt` | timestamp | Creation timestamp |
+| `UpdatedAt` | timestamp | Last update timestamp |
+| `Status` | string | Deployment status (if applicable) |
+
+### Custom Template Examples
+
+```bash
+# Simple list with domains
+sitectl list sites --format '{{.Name}}: {{.Domain}}'
+
+# Table with custom columns
+sitectl list sites --format 'table {{.Name}}\t{{.Domain}}\t{{.ProjectID}}'
+
+# Filter by project
+sitectl list sites --project-id proj_xyz789 --format '{{.Name}}'
+
+# JSON processing
+sitectl list sites --format json | \
+  jq '.[] | {name: .Name, domain: .Domain, project: .ProjectID}'
+
+# Sort by name
+sitectl list sites --format json | jq 'sort_by(.Name)'
+```

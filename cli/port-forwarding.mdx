@@ -1,0 +1,265 @@
+---
+title: 'Port Forwarding'
+description: 'Access remote services locally with port forwarding'
+---
+
+## Overview
+
+The `sitectl port-forward` command allows you to access services running in remote Docker Compose environments as if they were running locally. This is especially useful for services that don't expose ports on the host VM.
+
+## How It Works
+
+Port forwarding creates an SSH tunnel from your local machine to a service running in a remote Docker network:
+
+1. Resolves service name to container IP within Docker network
+2. Establishes SSH connection to remote host
+3. Forwards local port through SSH to container IP and port
+4. Maintains connection until interrupted (Ctrl+C)
+
+## Basic Usage
+
+```bash
+sitectl port-forward LOCAL-PORT:SERVICE:REMOTE-PORT
+```
+
+### Syntax
+
+- `LOCAL-PORT`: Port on your local machine
+- `SERVICE`: Docker Compose service name
+- `REMOTE-PORT`: Port the service listens on inside the container
+
+## Examples
+
+### Access Remote Database
+
+Forward your local port 5432 to a PostgreSQL service:
+
+```bash
+sitectl port-forward 5432:postgres:5432 --context production
+```
+
+Now you can connect to the remote database as if it were local:
+```bash
+psql -h localhost -p 5432 -U myuser mydb
+```
+
+### Access Solr Admin UI
+
+Forward Solr's admin interface:
+
+```bash
+sitectl port-forward 8983:solr:8983 --context staging
+```
+
+Visit `http://localhost:8983/solr` in your browser.
+
+### Access Multiple Services
+
+Forward multiple ports simultaneously:
+
+```bash
+sitectl port-forward \
+  3306:mysql:3306 \
+  6379:redis:6379 \
+  9200:elasticsearch:9200 \
+  --context production
+```
+
+### Different Local Port
+
+Use a different local port to avoid conflicts:
+
+```bash
+# Forward local 5433 to remote PostgreSQL on 5432
+sitectl port-forward 5433:postgres:5432 --context production
+```
+
+## Real-World Scenarios
+
+### Database Access
+
+```bash
+# PostgreSQL
+sitectl port-forward 5432:postgres:5432 --context prod
+
+# MySQL
+sitectl port-forward 3306:mysql:3306 --context prod
+
+# MongoDB
+sitectl port-forward 27017:mongo:27017 --context prod
+```
+
+### Cache Services
+
+```bash
+# Redis
+sitectl port-forward 6379:redis:6379 --context staging
+
+# Memcached
+sitectl port-forward 11211:memcached:11211 --context staging
+```
+
+### Search Engines
+
+```bash
+# Elasticsearch
+sitectl port-forward 9200:elasticsearch:9200 --context prod
+
+# Solr
+sitectl port-forward 8983:solr:8983 --context prod
+```
+
+### Message Queues
+
+```bash
+# RabbitMQ Management UI
+sitectl port-forward 15672:rabbitmq:15672 --context prod
+
+# RabbitMQ AMQP
+sitectl port-forward 5672:rabbitmq:5672 --context prod
+```
+
+### Monitoring Tools
+
+```bash
+# Prometheus
+sitectl port-forward 9090:prometheus:9090 --context prod
+
+# Grafana
+sitectl port-forward 3000:grafana:3000 --context prod
+```
+
+## Advanced Usage
+
+### Service Profiles
+
+Port forwarding works with Docker Compose profiles. The service name is resolved based on your context's configured profile:
+
+```bash
+# Context configured with profile 'production'
+sitectl port-forward 8080:app:80 --context prod
+# Resolves to container with label com.docker.compose.service=app and profile=production
+```
+
+### Keeping Connection Alive
+
+The port forward runs in the foreground. Keep the terminal open while using the forwarded ports:
+
+```bash
+sitectl port-forward 5432:postgres:5432 --context prod
+# Terminal output:
+# Forwarding localhost:5432 -> postgres:5432
+# Press Ctrl+C to stop
+```
+
+### Background Forwarding
+
+To run in the background, use standard shell job control:
+
+```bash
+# Start in background
+sitectl port-forward 5432:postgres:5432 --context prod &
+
+# View background jobs
+jobs
+
+# Bring to foreground
+fg
+
+# Or kill the background process
+kill %1
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+If the local port is already bound:
+
+```bash
+# Check what's using the port
+lsof -i :5432
+
+# Use a different local port
+sitectl port-forward 5433:postgres:5432 --context prod
+```
+
+### Service Not Found
+
+Ensure the service name matches your docker-compose.yml:
+
+```bash
+# List running services in context
+sitectl compose ps --context prod
+
+# Use exact service name
+sitectl port-forward 8080:web-app:80 --context prod
+```
+
+### Connection Refused
+
+Check that the service is running and listening:
+
+```bash
+# Verify service is running
+sitectl compose ps --context prod
+
+# Check service logs
+sitectl compose logs service-name --context prod
+
+# Verify service is listening on the expected port
+sitectl compose exec service-name netstat -tlnp
+```
+
+### SSH Connection Issues
+
+Ensure your SSH configuration is correct:
+
+```bash
+# Test SSH connection
+ssh -i ~/.ssh/id_rsa user@remote-host
+
+# Verify context SSH settings
+sitectl config view
+```
+
+## Best Practices
+
+<Tip>
+**Use descriptive local ports**: Choose local ports that match remote ports when possible for clarity.
+</Tip>
+
+<Warning>
+**Don't expose sensitive services**: Be cautious when forwarding production databases or admin interfaces.
+</Warning>
+
+<Note>
+**Temporary access**: Port forwards are temporary and close when you terminate the command (Ctrl+C).
+</Note>
+
+### Recommendations
+
+1. **Use SSH key authentication** for secure remote access
+2. **Close forwards when done** to free up local ports
+3. **Document port mappings** if using non-standard local ports
+4. **Use VPN alternatives** for long-term access requirements
+5. **Limit forwarding to trusted networks** - avoid public WiFi
+
+## Security Considerations
+
+- Port forwards run over SSH, providing encrypted transport
+- Only works with properly configured remote contexts
+- Requires valid SSH credentials and access
+- Services are only accessible on localhost by default
+- Use firewall rules to restrict access if needed
+
+## Comparison with Docker Port Mapping
+
+| Feature | Port Forward | Docker Port Mapping |
+|---------|-------------|---------------------|
+| **Setup** | On-demand | Configured in docker-compose.yml |
+| **Duration** | Temporary | Permanent |
+| **Security** | SSH encrypted | Direct exposure |
+| **Flexibility** | Any local port | Fixed in config |
+| **Remote Access** | Yes, via SSH | Requires host exposure |
+| **Use Case** | Ad-hoc debugging | Production services |

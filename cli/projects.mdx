@@ -1,0 +1,425 @@
+---
+title: 'Projects'
+description: 'Manage projects with sitectl'
+---
+
+## Overview
+
+Projects group related sites together within an organization. They provide a logical boundary for organizing your infrastructure and can have their own secrets, firewall rules, and team members.
+
+## List Projects
+
+View all projects you have access to:
+
+```bash
+# All projects across all organizations
+sitectl list projects
+
+# Projects in a specific organization
+sitectl list projects --organization-id <org-id>
+```
+
+### Flags
+
+- `--organization-id`: Filter projects by organization
+
+### Output Formats
+
+```bash
+# Table format (default)
+sitectl list projects
+
+# JSON format
+sitectl list projects --format json
+
+# Custom template
+sitectl list projects --format '{{.Name}} - {{.OrganizationID}}'
+
+# Disable cache
+sitectl list projects --no-cache
+```
+
+### Examples
+
+```bash
+# List all projects
+sitectl list projects
+
+# List projects in organization
+sitectl list projects --organization-id org_abc123
+
+# List as JSON and process with jq
+sitectl list projects --format json | jq '.[] | select(.Name | contains("prod"))'
+```
+
+## Get Project
+
+Retrieve details about a specific project:
+
+```bash
+sitectl get project <project-id>
+```
+
+### Examples
+
+```bash
+# Get project details
+sitectl get project proj_xyz789
+
+# Get as JSON
+sitectl get project proj_xyz789 --format json
+
+# Extract specific field
+sitectl get project proj_xyz789 --format '{{.Name}}'
+```
+
+## Create Project
+
+Create a new project within an organization:
+
+```bash
+sitectl create project \
+  --organization-id <org-id> \
+  --name "Project Name" \
+  --description "Project description"
+```
+
+### Required Flags
+
+- `--organization-id`: Parent organization ID
+- `--name`: Project name
+
+### Optional Flags
+
+- `--description`: Project description
+
+### Examples
+
+```bash
+# Minimal project
+sitectl create project \
+  --organization-id org_abc123 \
+  --name "Web Applications"
+
+# With description
+sitectl create project \
+  --organization-id org_abc123 \
+  --name "Production Services" \
+  --description "Customer-facing production applications"
+
+# Capture project ID
+PROJECT_ID=$(sitectl create project \
+  --organization-id org_abc123 \
+  --name "Staging Environment" \
+  --format json | jq -r '.id')
+
+echo "Created project: $PROJECT_ID"
+```
+
+## Edit Project
+
+Update an existing project:
+
+```bash
+sitectl edit project <project-id> \
+  --name "Updated Name" \
+  --description "Updated description"
+```
+
+### Available Flags
+
+- `--name`: Update project name
+- `--description`: Update project description
+
+### Examples
+
+```bash
+# Update name only
+sitectl edit project proj_xyz789 \
+  --name "Production Web Apps"
+
+# Update description only
+sitectl edit project proj_xyz789 \
+  --description "All customer-facing web applications"
+
+# Update both
+sitectl edit project proj_xyz789 \
+  --name "Updated Name" \
+  --description "Updated description"
+```
+
+## Delete Project
+
+Delete a project:
+
+```bash
+sitectl delete project <project-id>
+```
+
+<Warning>
+Deleting a project will also delete all associated sites, secrets, firewall rules, and member assignments. This action cannot be undone.
+</Warning>
+
+### Examples
+
+```bash
+# Delete project
+sitectl delete project proj_xyz789
+
+# Confirm before deletion
+read -p "Delete project proj_xyz789? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sitectl delete project proj_xyz789
+fi
+```
+
+## Complete Workflow Example
+
+```bash
+# Get organization ID
+ORG_ID=$(sitectl list organizations --format json | jq -r '.[0].ID')
+
+# Create project
+echo "Creating project..."
+PROJECT_ID=$(sitectl create project \
+  --organization-id $ORG_ID \
+  --name "E-commerce Platform" \
+  --description "Online store and related services" \
+  --format json | jq -r '.id')
+
+echo "Created project: $PROJECT_ID"
+
+# View project details
+sitectl get project $PROJECT_ID
+
+# Add project-level secrets
+sitectl create secrets \
+  --project-id $PROJECT_ID \
+  --key "SHARED_DATABASE_URL" \
+  --value "postgresql://user:pass@db.example.com/mydb"
+
+# Add project firewall rules
+sitectl create firewall \
+  --project-id $PROJECT_ID \
+  --cidr "198.51.100.0/24" \
+  --description "Development team VPN"
+
+# Add project members
+sitectl create members \
+  --project-id $PROJECT_ID \
+  --email "devops@example.com" \
+  --role "admin"
+
+# Create sites within project
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "storefront" \
+  --domain "shop.example.com"
+
+sitectl create site \
+  --project-id $PROJECT_ID \
+  --name "admin-panel" \
+  --domain "admin.shop.example.com"
+
+# List all sites in project
+echo "\nSites in project:"
+sitectl list sites --project-id $PROJECT_ID
+```
+
+## Best Practices
+
+<Tip>
+**Group by environment or application**: Organize projects by deployment stage (dev, staging, prod) or application type
+</Tip>
+
+<Note>
+**Resource hierarchy**: Projects sit between organizations and sites: Organization → Project → Sites
+</Note>
+
+### Recommendations
+
+1. **Use meaningful names**: Name projects to reflect their purpose or environment
+2. **One project per application**: Keep related sites together in a single project
+3. **Environment-based projects**: Consider separate projects for dev, staging, and production
+4. **Document dependencies**: Use descriptions to note relationships between projects
+5. **Consistent structure**: Use the same project structure across organizations
+
+## Common Project Structures
+
+### By Environment
+
+```bash
+# Development project
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Development" \
+  --description "Development and testing environment"
+
+# Staging project
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Staging" \
+  --description "Pre-production staging environment"
+
+# Production project
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Production" \
+  --description "Live production environment"
+```
+
+### By Application
+
+```bash
+# Web application
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Web Platform" \
+  --description "Main web application and APIs"
+
+# Internal tools
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Internal Tools" \
+  --description "Admin dashboards and internal services"
+
+# Data pipeline
+sitectl create project \
+  --organization-id $ORG_ID \
+  --name "Data Pipeline" \
+  --description "ETL and analytics infrastructure"
+```
+
+## Integration with Other Resources
+
+### List All Resources in Project
+
+```bash
+PROJECT_ID="proj_xyz789"
+
+echo "Sites:"
+sitectl list sites --project-id $PROJECT_ID
+
+echo "\nSecrets:"
+sitectl list secrets --project-id $PROJECT_ID
+
+echo "\nFirewall Rules:"
+sitectl list firewall --project-id $PROJECT_ID
+
+echo "\nMembers:"
+sitectl list members --project-id $PROJECT_ID
+```
+
+### Clone Project Structure
+
+```bash
+# Get source project
+SOURCE_PROJECT=$(sitectl get project proj_source123 --format json)
+
+# Create new project with same structure
+NEW_PROJECT_ID=$(sitectl create project \
+  --organization-id $(echo $SOURCE_PROJECT | jq -r '.OrganizationID') \
+  --name "$(echo $SOURCE_PROJECT | jq -r '.Name') - Clone" \
+  --description "Clone of $(echo $SOURCE_PROJECT | jq -r '.Name')" \
+  --format json | jq -r '.id')
+
+echo "Created clone: $NEW_PROJECT_ID"
+
+# Copy secrets (values need to be re-entered for security)
+sitectl list secrets --project-id proj_source123 --format json | \
+  jq -r '.[] | "--key \(.Key)"' | \
+  while read -r line; do
+    echo "Recreate secret: sitectl create secrets --project-id $NEW_PROJECT_ID $line --value <VALUE>"
+  done
+```
+
+### Migrate Project to Different Organization
+
+```bash
+# Note: Direct migration isn't supported, requires manual recreation
+SOURCE_PROJECT="proj_xyz789"
+TARGET_ORG="org_new123"
+
+# Get source project details
+PROJECT_DATA=$(sitectl get project $SOURCE_PROJECT --format json)
+
+# Create new project in target organization
+NEW_PROJECT=$(sitectl create project \
+  --organization-id $TARGET_ORG \
+  --name "$(echo $PROJECT_DATA | jq -r '.Name')" \
+  --description "Migrated from old organization" \
+  --format json)
+
+echo "Created new project: $(echo $NEW_PROJECT | jq -r '.id')"
+echo "Manually recreate sites, secrets, and other resources in new project"
+```
+
+## Troubleshooting
+
+### Project Not Found
+
+```bash
+# Verify project exists
+sitectl list projects
+
+# Check if in specific organization
+sitectl list projects --organization-id org_abc123
+
+# Verify project ID format
+sitectl get project proj_xyz789
+```
+
+### Cannot Create Project
+
+Ensure you have permission in the organization:
+
+```bash
+# Check organization membership
+sitectl list members --organization-id org_abc123
+
+# Verify authentication
+sitectl whoami
+```
+
+### Cannot Delete Project
+
+Projects can only be deleted by users with appropriate permissions:
+
+```bash
+# Check your role in the project
+sitectl list members --project-id proj_xyz789 | grep $(whoami)
+
+# Or check organization-level role
+sitectl list members --organization-id org_abc123 | grep $(whoami)
+```
+
+## Output Fields
+
+Available fields for custom templates and JSON output:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique project identifier |
+| `Name` | string | Project name |
+| `Description` | string | Project description |
+| `OrganizationID` | string | Parent organization ID |
+| `CreatedAt` | timestamp | Creation timestamp |
+| `UpdatedAt` | timestamp | Last update timestamp |
+
+### Custom Template Examples
+
+```bash
+# Simple list with organization
+sitectl list projects --format '{{.Name}} (org: {{.OrganizationID}})'
+
+# Table with custom columns
+sitectl list projects --format 'table {{.ID}}\t{{.Name}}\t{{.OrganizationID}}'
+
+# Filter by organization with template
+sitectl list projects --organization-id org_abc123 --format '{{.Name}}'
+
+# JSON processing
+sitectl list projects --format json | \
+  jq '.[] | {name: .Name, id: .ID, org: .OrganizationID}'
+```

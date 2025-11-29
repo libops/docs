@@ -1,48 +1,89 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "LibOps",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
   "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Dashboard",
+          "icon": "gauge",
+          "href": "https://dash.libops.io"
+        },
+        {
+          "anchor": "Support",
+          "icon": "book-open",
+          "href": "https://docs.libops.io"
+        }
+      ]
+    },
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Home",
         "groups": [
           {
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Project Templates",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "templates/islandora",
+              "templates/ojs"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI reference",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "cli/introduction",
+              "cli/authentication"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Core concepts",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "cli/contexts",
+              "cli/configuration"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Commands",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "cli/compose",
+              "cli/port-forwarding"
+            ]
+          },
+          {
+            "group": "Resource Management",
+            "pages": [
+              "cli/organizations",
+              "cli/projects",
+              "cli/sites",
+              "cli/settings",
+              "cli/secrets",
+              "cli/firewall",
+              "cli/members"
+            ]
+          },
+          {
+            "group": "Account Management",
+            "pages": [
+              "cli/ssh-keys",
+              "cli/api-keys"
             ]
           }
         ]
@@ -53,70 +94,238 @@
           {
             "group": "API documentation",
             "pages": [
-              "api-reference/introduction"
+              "api/reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Organizations",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/reference/create_organization",
+              "api/reference/delete_organization",
+              "api/reference/get_organization",
+              "api/reference/list_organization_projects",
+              "api/reference/list_organizations",
+              "api/reference/update_organization"
+            ]
+          },
+          {
+            "group": "Projects",
+            "pages": [
+              "api/reference/create_project",
+              "api/reference/delete_project",
+              "api/reference/get_project",
+              "api/reference/list_project_sites",
+              "api/reference/list_projects",
+              "api/reference/update_project"
+            ]
+          },
+          {
+            "group": "Sites",
+            "pages": [
+              "api/reference/create_site",
+              "api/reference/delete_site",
+              "api/reference/get_site",
+              "api/reference/list_sites",
+              "api/reference/update_site"
+            ]
+          },
+          {
+            "group": "Settings",
+            "pages": [
+              {
+                "group": "Organization Settings",
+                "pages": [
+                  "api/reference/create_organization_setting",
+                  "api/reference/delete_organization_setting",
+                  "api/reference/get_organization_setting",
+                  "api/reference/list_organization_settings",
+                  "api/reference/update_organization_setting"
+                ]
+              },
+              {
+                "group": "Project Settings",
+                "pages": [
+                  "api/reference/create_project_setting",
+                  "api/reference/delete_project_setting",
+                  "api/reference/get_project_setting",
+                  "api/reference/list_project_settings",
+                  "api/reference/update_project_setting"
+                ]
+              },
+              {
+                "group": "Site Settings",
+                "pages": [
+                  "api/reference/create_site_setting",
+                  "api/reference/delete_site_setting",
+                  "api/reference/get_site_setting",
+                  "api/reference/list_site_settings",
+                  "api/reference/update_site_setting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Firewall",
+            "pages": [
+              {
+                "group": "Organization Firewall",
+                "pages": [
+                  "api/reference/create_organization_firewall_rule",
+                  "api/reference/delete_organization_firewall_rule",
+                  "api/reference/list_organization_firewall_rules"
+                ]
+              },
+              {
+                "group": "Project Firewall",
+                "pages": [
+                  "api/reference/create_project_firewall_rule",
+                  "api/reference/delete_project_firewall_rule",
+                  "api/reference/list_project_firewall_rules"
+                ]
+              },
+              {
+                "group": "Site Firewall",
+                "pages": [
+                  "api/reference/create_site_firewall_rule",
+                  "api/reference/delete_site_firewall_rule",
+                  "api/reference/list_site_firewall_rules"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Members",
+            "pages": [
+              {
+                "group": "Organization Members",
+                "pages": [
+                  "api/reference/create_organization_member",
+                  "api/reference/delete_organization_member",
+                  "api/reference/list_organization_members",
+                  "api/reference/update_organization_member"
+                ]
+              },
+              {
+                "group": "Project Members",
+                "pages": [
+                  "api/reference/create_project_member",
+                  "api/reference/delete_project_member",
+                  "api/reference/list_project_members",
+                  "api/reference/update_project_member"
+                ]
+              },
+              {
+                "group": "Site Members",
+                "pages": [
+                  "api/reference/create_site_member",
+                  "api/reference/delete_site_member",
+                  "api/reference/list_site_members",
+                  "api/reference/update_site_member"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secrets",
+            "pages": [
+              {
+                "group": "Organization Secrets",
+                "pages": [
+                  "api/reference/create_organization_secret",
+                  "api/reference/delete_organization_secret",
+                  "api/reference/get_organization_secret",
+                  "api/reference/list_organization_secrets",
+                  "api/reference/update_organization_secret"
+                ]
+              },
+              {
+                "group": "Project Secrets",
+                "pages": [
+                  "api/reference/create_project_secret",
+                  "api/reference/delete_project_secret",
+                  "api/reference/get_project_secret",
+                  "api/reference/list_project_secrets",
+                  "api/reference/update_project_secret"
+                ]
+              },
+              {
+                "group": "Site Secrets",
+                "pages": [
+                  "api/reference/create_site_secret",
+                  "api/reference/delete_site_secret",
+                  "api/reference/get_site_secret",
+                  "api/reference/list_site_secrets",
+                  "api/reference/update_site_secret"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "SSH Keys",
+            "pages": [
+              "api/reference/create_ssh_key",
+              "api/reference/delete_ssh_key",
+              "api/reference/list_ssh_keys"
+            ]
+          },
+          {
+            "group": "Site Operations",
+            "pages": [
+              "api/reference/deploy_site",
+              "api/reference/get_site_status"
+            ]
+          },
+          {
+            "group": "Account",
+            "pages": [
+              "api/reference/create_api_key",
+              "api/reference/get_account_by_email",
+              "api/reference/list_api_keys",
+              "api/reference/revoke_api_key"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Terraform Provider",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "terraform/coming-soon"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/libops-light.png",
+    "dark": "/logo/libops-dark.png"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "https://docs.libops.io/support"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://dash.libops.io"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/libraryops",
+      "github": "https://github.com/libops",
+      "linkedin": "https://linkedin.com/company/libops"
     }
   }
 }
