@@ -97,7 +97,8 @@
             "group": "Commands",
             "pages": [
               "cli/compose",
-              "cli/port-forwarding"
+              "cli/port-forwarding",
+              "cli/task-agent"
             ]
           },
           {

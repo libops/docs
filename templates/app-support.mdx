@@ -110,6 +110,8 @@ Template repositories are the customer-facing extension layer. Customers consume
 
 For local development, `sitectl compose up` may write an untracked `docker-compose.override.yml` to avoid host port conflicts. The tracked Compose file should publish the production ingress ports, usually `80:80` and, when the stack serves HTTPS directly, `443:443`. If production uses HTTPS and local development should match it, use mkcert-backed Traefik certificates rather than committing a TLS override.
 
+Application plugins also own their dev-mode mount list. `sitectl set dev-mode enabled` writes those mounts for local editing, and `sitectl set dev-mode --assistant` adds a profiled `cli-sandbox` service with the same plugin-declared code paths. Use `--compose-access` only when the coding agent should reach the running Compose network and host Docker daemon.
+
 This split keeps upstream downloads, checksums, PHP flavors, nginx runtime config, and install smoke tests centralized in buildkit while still giving customer repositories a small, understandable customization surface.
 
 ## Make Targets

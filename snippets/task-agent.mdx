@@ -9,4 +9,4 @@ The **LibOps Task Agent** does the technical work. Your team reviews every chang
 
 Every change is transparent, reviewable, and tied to the GitHub workflow your team already knows.
 
-The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported. They run inside your organization's infrastructure on the LibOps-managed platform, with access limited to members of your organization. LibOps evaluates new open weight models as they become available.
+The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported. Harnesses run through `libops/cli-sandbox`, and site coding tasks are prepared with `sitectl set dev-mode --assistant` so the agent sees the same plugin-owned development mounts as a local engineer. Models run inside your organization's infrastructure on the LibOps-managed platform, with access limited to members of your organization. LibOps evaluates new open weight models as they become available.
