@@ -8225,7 +8225,7 @@ components:
         agentModel:
           type: string
           title: agent_model
-          description: Optional coding agent model selection. Defaults to `glm-5.2:cloud`.
+          description: Optional coding agent model selection.
         harness:
           title: harness
           description: Optional coding harness selection.
@@ -8893,7 +8893,6 @@ components:
         agentModel:
           type: string
           title: agent_model
-          description: Optional coding agent model selection. Defaults to `glm-5.2:cloud`.
         harness:
           title: harness
           $ref: '#/components/schemas/libops.v1.TaskHarness'
@@ -11001,8 +11000,6 @@ components:
         agentModel:
           type: string
           title: agent_model
-          description: Coding agent model selected for this task. Defaults to `glm-5.2:cloud`
-            when not specified.
         harness:
           title: harness
           $ref: '#/components/schemas/libops.v1.TaskHarness'
@@ -12055,7 +12052,8 @@ components:
       scheme: bearer
       bearerFormat: API Key
       description: 'API key authentication (prefix: libops_)'
-security: []
+security:
+- apiKey: []
 tags:
 - name: libops.v1.AdminAccountService
   description: AdminAccountService manages user accounts (admin only)

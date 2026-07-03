@@ -326,6 +326,23 @@
             ]
           },
           {
+            "group": "Task Agent",
+            "pages": [
+              "api/reference/append_task_log",
+              "api/reference/cancel_task",
+              "api/reference/create_task",
+              "api/reference/get_task",
+              "api/reference/list_tasks",
+              "api/reference/update_task"
+            ]
+          },
+          {
+            "group": "Assistant",
+            "pages": [
+              "api/reference/chat"
+            ]
+          },
+          {
             "group": "Account",
             "pages": [
               "api/reference/create_api_key",
@@ -369,6 +386,9 @@
       "label": "Create a site",
       "href": "https://dash.libops.io"
     }
+  },
+  "api": {
+    "openapi": "api/reference/openapi.yaml"
   },
   "contextual": {
     "options": [
