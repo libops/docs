@@ -1,0 +1,88 @@
+---
+title: "Adoption Model"
+description: "How LibOps templates, sitectl, and the managed platform fit together"
+---
+
+LibOps is built as three adoption layers. Each layer is useful on its own, and each layer keeps the same repository-backed application contract.
+
+<CardGroup cols={3}>
+  <Card title="Compose templates" icon="docker">
+    Application repositories that run with Docker Compose. They own local customization, app-specific Dockerfiles, init behavior, rollout scripts, and Renovate configuration.
+  </Card>
+  <Card title="sitectl" icon="terminal">
+    The operator layer for those repositories. It adds saved contexts, app plugins, health checks, ingress management, dev-mode, and repeatable lifecycle commands.
+  </Card>
+  <Card title="LibOps platform" icon="cloud">
+    Managed hosting and collaboration on top of the same repositories: secrets, membership, firewall rules, previews, CDN, deployments, and operational automation.
+  </Card>
+</CardGroup>
+
+The boundary between layers matters. Compose templates should remain understandable without the platform. `sitectl` should make the same templates easier to operate locally or remotely. The platform should orchestrate the same lifecycle instead of hiding a separate deployment path.
+
+## Buildkit Contract
+
+Reusable application behavior belongs in `libops/buildkit`.
+
+Buildkit images provide the shared runtime contract:
+
+- s6-overlay owns service supervision.
+- confd renders runtime configuration from environment and secrets.
+- Images are tagged with the underlying application or runtime version they ship.
+- Universal runtime behavior belongs in the image rather than being copied into every template.
+- Image tests live beside the image and prove the application can install, start, and answer basic health checks.
+
+Templates build from those images when they need site-level customization. For example, a template can add a Drupal module, WordPress plugin, OJS plugin, Omeka theme, or ArchivesSpace customization without replacing the base runtime contract.
+
+## Template Contract
+
+Compose templates are the self-hostable contract. They should define:
+
+- `docker-compose.yaml` for the production-shaped service graph.
+- `docker-compose.override-example.yaml` for local-only bind mounts.
+- `Makefile` targets for init, build, up, down, test, and rollout.
+- `scripts/rollout.sh` for app-specific deployment sequencing.
+- `renovate.json5` for dependency and image updates.
+- App-level Dockerfiles only where the template needs checked-in local code or dependencies.
+
+The template owns the customer-facing customization surface. Secrets and generated runtime configuration should flow through environment variables and confd-backed files, not through repeated app-load logic or undocumented manual edits.
+
+## sitectl Contract
+
+`sitectl` operates the template without replacing it.
+
+Core sitectl provides context management, remote Docker access, Compose helpers, package prerequisites, ingress components, QA scripts, dependency bumping, and shared lifecycle plumbing.
+
+App plugins provide the app-aware layer:
+
+- create metadata for template checkout, init artifacts, and default commands;
+- health checks that understand the application route and backing services;
+- ingress update hooks for app-specific host, scheme, and trusted-proxy configuration;
+- dev-mode mount lists, including the code paths mounted into `cli-sandbox` when assistant mode is enabled;
+- rollout and inspection helpers that are specific to the app.
+
+The app plugin should delegate universal behavior to core sitectl components. If every app needs the same behavior, it belongs in core sitectl or buildkit, not in seven plugin implementations.
+
+## Platform Contract
+
+The LibOps platform coordinates the same lifecycle at managed scale. It adds:
+
+- repository checkout and deployment orchestration;
+- Vault-backed secrets;
+- membership and access control;
+- firewall and domain management;
+- CDN and edge routing;
+- preview environments;
+- task-agent workflows;
+- rollout automation and operational monitoring.
+
+The platform should call into sitectl and the repository's declared entrypoints. It should not create a second, platform-only way to initialize, update, or run an application.
+
+## Choosing a Layer
+
+Start with the lowest layer that solves the problem:
+
+- Use Compose templates when you want a clear, self-hosted application repository.
+- Add `sitectl` when you need repeatable operations across local and remote environments.
+- Use the LibOps platform when you want managed infrastructure, collaboration, secrets, CDN, previews, and deployments handled for you.
+
+You can move up the stack without rebuilding the site around a new operational model.

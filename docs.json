@@ -60,6 +60,7 @@
             "group": "For Technical Staff",
             "pages": [
               "platform/engineer-guide",
+              "platform/adoption-model",
               "platform/why-docker-compose",
               "templates/compose-projects",
               "templates/app-support",
