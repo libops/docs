@@ -13,11 +13,19 @@ The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported, and LibOps 
 
 ## Models and execution boundary
 
-The current LibOps Task Agent harness is Codex. Supported harnesses are documented in the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) project.
+The LibOps Task Agent can run `codex`, `claude`, `pi`, `opencode`, or `gemini` through the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) image.
 
 The supported models run inside your organization's infrastructure on the LibOps-managed platform. Only members of your organization can access the infrastructure serving those models.
 
 Contact [LibOps](https://www.libops.io/contact/) if your organization wants to integrate with Anthropic, OpenAI, or another model provider.
+
+For site coding tasks, the runner prepares the checked-out repository with sitectl before the harness starts:
+
+```bash
+sitectl set dev-mode enabled --assistant --harness codex --compose-access --yolo
+```
+
+That step writes the application plugin's editable-code mounts and a profiled `cli-sandbox` service into `docker-compose.override.yml`. The agent then works against the same development surface that engineers use locally, including app-specific paths such as Drupal modules and themes, WordPress plugins and themes, OJS plugins, and Omeka modules or themes.
 
 ## Why use the LibOps Task Agent?
 
