@@ -6,14 +6,14 @@ description: "Use the LibOps API, sitectl CLI, GitHub integration, and standardi
 This guide is for software engineers, systems administrators, developers, and technical partners who build and operate applications on the LibOps platform.
 
 <Info>
-LibOps is a transparent platform, not a black box. You get a full API, the `sitectl` CLI, GitHub review, and Docker Compose templates, so you keep visibility and control over every stack you operate here.
+LibOps is a transparent platform, not a black box. You get Docker Compose templates, the `sitectl` CLI, `cloud-compose` Terraform modules, a full API, and GitHub review, so you keep visibility and control over every stack you operate here.
 </Info>
 
 ## Start with the template contract
 
 Engineers can use LibOps-supported templates without handing the workload to the managed platform. Each template is a normal Docker Compose project with repository-owned lifecycle commands, so your team can deploy it on infrastructure you control and inspect the operational model directly.
 
-From there, `sitectl` is useful when you want saved local and remote contexts, plugin commands, service helpers, logs, port forwarding, and rollouts in one CLI. The LibOps platform adds managed hosting, firewall rules, secrets, previews, membership, and API-backed automation around the same repository shape.
+From there, `sitectl` is useful when you want saved local and remote contexts, plugin commands, service helpers, logs, port forwarding, and rollouts in one CLI. `cloud-compose` is the next self-hosted step when you want Terraform to provision the cloud VM, persistent volumes, and host setup while still owning the cloud account. The LibOps platform adds managed hosting, firewall rules, secrets, previews, membership, and API-backed automation around the same repository shape.
 
 ## Why engineers like working here
 
@@ -41,6 +41,9 @@ LibOps keeps application code, configuration, and deployment logic in GitHub rep
   </Card>
   <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
     Manage local and remote Docker Compose environments, inspect logs, trigger rollouts, and use app-aware plugins.
+  </Card>
+  <Card title="cloud-compose" icon="server" href="https://cc.libops.io/">
+    Deploy supported Compose templates on Google Cloud, DigitalOcean, or Linode using the same sitectl lifecycle.
   </Card>
   <Card title="GitHub integration" icon="github" href="/platform/github">
     Managed or customer-owned repositories with transparent code review, preview branches, and automated deployments.

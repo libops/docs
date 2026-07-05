@@ -125,7 +125,7 @@ PROJECT_ID=$(sitectl libops create project \
   --region us-central1 \
   --zone us-central1-f \
   --machine-type e2-standard-2 \
-  --disk-size-gb 20 \
+  --disk-size-gb 100 \
   --format json | jq -r '.id')
 
 # Create site

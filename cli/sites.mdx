@@ -53,6 +53,8 @@ sitectl libops edit site "$SITE_ID" --up-cmd "make up" --rollout-cmd "make rollo
 sitectl libops delete site "$SITE_ID" --yes
 ```
 
+Deleting a site starts irreversible removal of the deployment and its managed infrastructure. Back up data before requesting deletion; LibOps cannot guarantee recovery after deletion starts.
+
 The current API does not update repository, compose path/file, port, or application type after creation.
 
 ## Runtime workflows

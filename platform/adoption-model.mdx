@@ -1,23 +1,26 @@
 ---
 title: "Adoption Model"
-description: "How LibOps templates, sitectl, and the managed platform fit together"
+description: "How LibOps templates, sitectl, cloud-compose, and the managed platform fit together"
 ---
 
-LibOps is built as three adoption layers. Each layer is useful on its own, and each layer keeps the same repository-backed application contract.
+LibOps is built as four adoption layers. Each layer is useful on its own, and each layer keeps the same repository-backed application contract.
 
-<CardGroup cols={3}>
+<CardGroup cols={4}>
   <Card title="Compose templates" icon="docker">
     Application repositories that run with Docker Compose. They own local customization, app-specific Dockerfiles, init behavior, rollout scripts, and Renovate configuration.
   </Card>
   <Card title="sitectl" icon="terminal">
     The operator layer for those repositories. It adds saved contexts, app plugins, health checks, ingress management, dev-mode, and repeatable lifecycle commands.
   </Card>
+  <Card title="cloud-compose" icon="server">
+    The self-hosted cloud layer. It combines the same templates and sitectl lifecycle with Terraform-managed VMs, persistent volumes, and host setup on supported clouds.
+  </Card>
   <Card title="LibOps platform" icon="cloud">
     Managed hosting and collaboration on top of the same repositories: secrets, membership, firewall rules, previews, CDN, deployments, and operational automation.
   </Card>
 </CardGroup>
 
-The boundary between layers matters. Compose templates should remain understandable without the platform. `sitectl` should make the same templates easier to operate locally or remotely. The platform should orchestrate the same lifecycle instead of hiding a separate deployment path.
+The boundary between layers matters. Compose templates should remain understandable without the platform. `sitectl` should make the same templates easier to operate locally or remotely. `cloud-compose` should provision reusable cloud infrastructure without creating a separate app lifecycle. The platform should orchestrate the same lifecycle instead of hiding a separate deployment path.
 
 ## Buildkit Contract
 
@@ -62,6 +65,22 @@ App plugins provide the app-aware layer:
 
 The app plugin should delegate universal behavior to core sitectl components. If every app needs the same behavior, it belongs in core sitectl or buildkit, not in seven plugin implementations.
 
+## cloud-compose Contract
+
+`cloud-compose` deploys the same repository and sitectl contract onto cloud infrastructure.
+
+It provides the reusable self-hosted cloud layer:
+
+- Terraform modules for supported cloud providers;
+- virtual machine provisioning and host bootstrap;
+- persistent data and Docker-volume storage;
+- OS-family dependency installation for Docker, Compose, BuildKit, and sitectl;
+- sitectl context creation on the VM;
+- lifecycle systemd units and timers, including health checks and MariaDB backups;
+- first-class template presets for supported LibOps applications.
+
+`cloud-compose` should not encode application-specific rollout logic. It should prepare the host, clone the repository, configure sitectl, and run the same lifecycle commands the template and plugin declare.
+
 ## Platform Contract
 
 The LibOps platform coordinates the same lifecycle at managed scale. It adds:
@@ -83,6 +102,7 @@ Start with the lowest layer that solves the problem:
 
 - Use Compose templates when you want a clear, self-hosted application repository.
 - Add `sitectl` when you need repeatable operations across local and remote environments.
+- Add `cloud-compose` when you want Terraform-managed cloud infrastructure while keeping the app self-hosted in your own account.
 - Use the LibOps platform when you want managed infrastructure, collaboration, secrets, CDN, previews, and deployments handled for you.
 
 You can move up the stack without rebuilding the site around a new operational model.

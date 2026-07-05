@@ -30,6 +30,8 @@ sitectl libops delete organization "$ORGANIZATION_ID"
 sitectl libops delete organization "$ORGANIZATION_ID" --yes
 ```
 
+Deleting an organization starts irreversible removal of its projects, sites, and managed infrastructure. Back up data before requesting deletion; LibOps cannot guarantee recovery after deletion starts.
+
 Organization location and region are set when the organization is created and cannot be updated by the current API.
 
 ## Related scopes

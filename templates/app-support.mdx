@@ -3,7 +3,7 @@ title: 'Application Templates and Customization'
 description: 'How LibOps application templates, rollouts, updates, and local workflows fit together'
 ---
 
-LibOps application templates are designed so a site can be used as-is, customized through LibOps, customized locally, or self-hosted on your own infrastructure without changing the deployment model. The same Docker Compose project runs on a laptop, in CI, on your own VM, and on LibOps-managed VMs.
+LibOps application templates are designed so a site can be used as-is, customized through LibOps, customized locally, or self-hosted on your own infrastructure without changing the deployment model. The same Docker Compose project runs on a laptop, in CI, on your own VM, on cloud-compose-provisioned VMs, and on LibOps-managed VMs.
 
 LibOps platform hosting is limited to LibOps-supported or LibOps-approved templates. Running unrelated workloads on LibOps-managed infrastructure is outside the service boundary and may result in suspension or account termination. See [Terms of Service](https://www.libops.io/terms/).
 
@@ -23,12 +23,15 @@ LibOps currently supports these template families:
 
 The templates provide value before you adopt the LibOps platform. Start with the level of support that matches your team.
 
-<CardGroup cols={3}>
+<CardGroup cols={4}>
   <Card title="Self-host with Docker Compose" icon="docker">
     Fork or copy the template, configure the environment, and run it with the standard Docker Compose CLI on hardware you control.
   </Card>
   <Card title="Use sitectl as the operator layer" icon="terminal">
     Keep the same Compose project while adding saved contexts, app-aware plugin commands, service helpers, logs, and rollout workflows.
+  </Card>
+  <Card title="Deploy with cloud-compose" icon="server">
+    Use the LibOps Terraform module to provision the VM, persistent volumes, host dependencies, and sitectl context in your own cloud account.
   </Card>
   <Card title="Run it on LibOps" icon="cloud">
     Keep the same repository contract while LibOps manages hosting, firewall rules, Vault-backed secrets, previews, membership, and deployment workflows.
@@ -37,9 +40,9 @@ The templates provide value before you adopt the LibOps platform. Start with the
 
 The important boundary is the template repository. Application setup, local development, and rollout behavior stay visible in Git instead of being hidden in a platform-only deployment path.
 
-## Choose Your Path
+## Choose Your Customization Path
 
-Most teams fit one of three patterns.
+Most managed-template projects fit one of these customization patterns.
 
 ### Never Customizing
 

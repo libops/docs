@@ -149,8 +149,11 @@
             "group": "Projects",
             "pages": [
               "api/reference/create_project",
+              "api/reference/create_project_runtime",
               "api/reference/delete_project",
               "api/reference/get_project",
+              "api/reference/get_project_runtime",
+              "api/reference/list_project_runtimes",
               "api/reference/list_project_sites",
               "api/reference/list_projects",
               "api/reference/update_project"

@@ -14,7 +14,7 @@ sitectl libops create project \
   --region us-central1 \
   --zone us-central1-f \
   --machine-type e2-standard-2 \
-  --disk-size-gb 20
+  --disk-size-gb 100
 ```
 
 Use `--create-branch-sites` when LibOps should create site records for new branches.
@@ -34,6 +34,8 @@ sitectl libops edit project "$PROJECT_ID" --name "Public Collections"
 sitectl libops edit project "$PROJECT_ID" --machine-type e2-standard-4 --disk-size-gb 50
 sitectl libops delete project "$PROJECT_ID" --yes
 ```
+
+Deleting a project starts irreversible removal of the project, its sites, and managed infrastructure. Back up data before requesting deletion; LibOps cannot guarantee recovery after deletion starts.
 
 ## Project-scoped controls
 

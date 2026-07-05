@@ -99,7 +99,7 @@ Engineers can use the same resource model through `sitectl`:
       --region us-central1 \
       --zone us-central1-f \
       --machine-type e2-standard-2 \
-      --disk-size-gb 20
+      --disk-size-gb 100
     ```
 
     Or capture the project ID automatically:
@@ -111,7 +111,7 @@ Engineers can use the same resource model through `sitectl`:
       --region us-central1 \
       --zone us-central1-f \
       --machine-type e2-standard-2 \
-      --disk-size-gb 20 \
+      --disk-size-gb 100 \
       --format json | jq -r '.id')
 
     echo "Created project: $PROJECT_ID"
@@ -315,7 +315,7 @@ PROJECT_ID=$(sitectl libops create project \
   --region us-central1 \
   --zone us-central1-f \
   --machine-type e2-standard-2 \
-  --disk-size-gb 20 \
+  --disk-size-gb 100 \
   --format json | jq -r '.id')
 
 echo "Project ID: $PROJECT_ID"
