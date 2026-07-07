@@ -29,6 +29,19 @@ Site-level resources apply to exactly one site. Use this for production-only acc
 When access should be limited, attach it at the narrowest level that matches the work.
 </Info>
 
+## Environments And Runtime Hosts
+
+A site record represents one running environment for a codebase: production, staging, review, development, or another named environment. A project can have more than one runtime host. In the managed platform, production is isolated on its own runtime, while non-production environments for the same project can share a runtime host.
+
+Terraform and cloud-compose create the runtime host, install the base operating-system dependencies, and place the initial Compose project scaffolding on the VM. They do not manage day-to-day state inside the VM. The site reconciler running on the VM handles operational state such as SSH users, allowed keys, secrets files, firewall rules, and GitHub-triggered deployments.
+
+That split affects how scopes are applied:
+
+- Organization and project resources are inherited by every environment under that scope.
+- Site resources are environment-specific overrides. The happy path is to keep shared behavior at project scope, let non-production environments inherit the same settings, and override only the production site when production needs to differ.
+- Site-level members for production apply only to the production site.
+- Site-level members for non-production environments in the same project are treated as the non-production access set for that project.
+
 ## Members
 
 Members can be attached to organizations, projects, or sites:
@@ -37,7 +50,7 @@ Members can be attached to organizations, projects, or sites:
 | --- | --- | --- |
 | Organization | All projects and sites in the organization | Internal platform owners, agency account leads, broad technical staff |
 | Project | Every site in one project | Application maintainers for one service |
-| Site | One site only | Production approvers, temporary support, limited environment access |
+| Site | One environment | Production approvers, temporary support, limited environment access |
 
 Member roles are `owner`, `developer`, and `read`. LibOps creates or resolves member accounts by email when adding a member. Existing members are still identified by account ID for update and delete operations.
 

@@ -5,6 +5,8 @@ description: 'Manage LibOps dashboard Sites from sitectl'
 
 The dashboard calls these records **Sites**. In core `sitectl` context language, a site record is also the remote runtime environment for a codebase, so `list environments` is available as an explicit alias-style command.
 
+A project commonly has one production site and one or more non-production sites. Keep shared configuration at project scope so non-production environments inherit the same defaults, then use site-level settings only for environment-specific overrides such as production credentials, public firewall access, or production-only member access.
+
 ## Create
 
 ```bash

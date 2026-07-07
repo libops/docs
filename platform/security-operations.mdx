@@ -63,11 +63,11 @@ OAuth-based authentication and Slack integration connect LibOps to the way teams
 
 Slack integration is especially useful for support, notifications, and team workflows around site activity.
 
-## Tenant Isolation
+## Runtime Isolation
 
-Sites run on their own VMs. This single-tenant model gives each workload a dedicated compute boundary and keeps app-level issues scoped to the site where they occur.
+Production sites run on dedicated runtime hosts. Non-production environments for the same project can share a separate host, keeping preview and staging work outside the production boundary while avoiding unnecessary infrastructure for short-lived environments.
 
-For organizations evaluating risk, this is a simpler model to reason about than shared hosting where unrelated applications compete inside the same runtime.
+For organizations evaluating risk, this is simpler to reason about than shared hosting where unrelated applications compete inside the same runtime.
 
 ## Operational Accountability
 

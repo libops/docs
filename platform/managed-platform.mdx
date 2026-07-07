@@ -74,16 +74,16 @@ LibOps manages the secure compute environment on Google Cloud. Your team focuses
   </Card>
 </Columns>
 
-## Single-tenant site isolation
+## Runtime Isolation
 
-Every LibOps site runs on its own dedicated virtual machine. Each production workload has a distinct compute boundary, avoiding the risks of shared application runtimes.
+Each production workload runs on a distinct runtime host. Non-production environments for the same project can share a separate runtime host, which keeps previews and staging isolated from production without requiring a new VM for every short-lived environment.
 
 <CardGroup cols={2}>
   <Card title="Fault isolation" icon="shield">
-    App-specific issues stay contained within the site's own environment.
+    Production issues stay contained within the production runtime, and non-production work stays outside that boundary.
   </Card>
   <Card title="Predictable performance" icon="gauge">
-    Resource allocation and maintenance windows are scoped to the individual site.
+    Resource allocation and maintenance windows are scoped to the runtime host.
   </Card>
   <Card title="Clear ownership" icon="user-check">
     Operational responsibility for production, staging, and review environments is explicitly defined.

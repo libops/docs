@@ -5,6 +5,8 @@ description: 'List and operate LibOps site environments from sitectl'
 
 The dashboard uses the label **Sites** for the runtime records exposed by the API. Core `sitectl` documentation often calls the same runtime target an **environment** because it represents where a site runs: production, staging, review, local, and so on.
 
+In the managed platform, production is expected to have its own runtime host. Non-production environments for the same project can share a runtime host and the same project-level settings, secrets, members, and firewall rules. Add site-level overrides only when one environment needs to differ.
+
 Use either command depending on the audience:
 
 ```bash
