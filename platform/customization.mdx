@@ -15,7 +15,7 @@ That repository-backed model supports:
 
 - Pull requests for review.
 - Task branches for isolated work.
-- Rollout scripts for repeatable deployments.
+- Plugin-declared lifecycle and migration metadata for repeatable deployments.
 - Clear ownership of configuration, templates, and custom code.
 - Upgrade paths that can be tested against the customer repository.
 
@@ -69,6 +69,11 @@ Custom code should not isolate an institution from the software community it dep
 
 When a customization has broader value, the same repository and pull request practices can help turn local work into upstream issue reports, patches, documentation, or shared implementation patterns.
 
-<Card title="GitHub Integration" icon="github" href="/platform/github">
-  Learn how managed repositories, customer-owned GitHub organizations, pull requests, and short-lived GitHub App tokens work.
-</Card>
+<CardGroup cols={2}>
+  <Card title="GitHub Integration" icon="github" href="/platform/github">
+    Learn how managed repositories, customer-owned GitHub organizations, pull requests, and short-lived GitHub App tokens work.
+  </Card>
+  <Card title="Maintaining a downstream fork" icon="code-branch" href="/templates/downstream-forks">
+    See the supported edit surfaces, component workflow, and update boundaries for customer-owned templates.
+  </Card>
+</CardGroup>

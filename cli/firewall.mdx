@@ -1,41 +1,8 @@
 ---
-title: 'Firewall'
-description: 'Manage LibOps firewall rules for organizations, projects, and Sites'
+title: 'LibOps firewall rules in sitectl'
+description: 'Find the maintained LibOps access-control command reference'
 ---
 
-Firewall rules can be attached at organization, project, or Site scope. Pass exactly one scope flag.
+This legacy route is retained for existing links. Current firewall command behavior is documented in the [sitectl LibOps access-controls reference](https://sitectl.libops.io/plugins/libops/access-controls).
 
-Use project firewall rules for access that should apply to every environment in a project. Use site firewall rules for environment-specific access, such as making the production site public while keeping non-production environments allowlisted.
-
-## Create
-
-```bash
-sitectl libops create firewall \
-  --site-id "$SITE_ID" \
-  --name office \
-  --cidr 203.0.113.0/24 \
-  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-```
-
-Rule types:
-
-- `FIREWALL_RULE_TYPE_HTTPS_ALLOWED`
-- `FIREWALL_RULE_TYPE_SSH_ALLOWED`
-- `FIREWALL_RULE_TYPE_BLOCKED`
-
-## List
-
-```bash
-sitectl libops list firewall --organization-id "$ORGANIZATION_ID"
-sitectl libops list firewall --project-id "$PROJECT_ID"
-sitectl libops list firewall --site-id "$SITE_ID"
-```
-
-## Delete
-
-```bash
-sitectl libops delete firewall "$RULE_ID" --site-id "$SITE_ID"
-sitectl libops delete firewall "$RULE_ID" --site-id "$SITE_ID" --yes
-```
-
-Firewall rules do not currently support in-place update. Delete and recreate the rule.
+For the platform network boundary, see [Security and Operations](/platform/security-operations).

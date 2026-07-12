@@ -13,7 +13,7 @@ The platform combines Google Cloud infrastructure, single-tenant virtual machine
 
 ## Managed hosting is an added layer
 
-LibOps does not require institutions to begin with the managed platform. Supported application templates are documented Docker Compose projects that technical teams can run on their own hardware. `sitectl` can then add a consistent operator interface for contexts, logs, rollouts, and app-specific commands. `cloud-compose` adds a self-hosted cloud path when the institution wants Terraform-managed VMs and persistent storage in its own cloud account.
+LibOps does not require institutions to begin with the managed platform. Supported application templates are documented Docker Compose projects that technical teams can run on their own hardware. `sitectl` adds contexts, shared lifecycle, health checks, components, and app-specific helpers. `cloud-compose` adds a self-hosted path when the institution wants Terraform-managed VMs and persistent storage in its own cloud account.
 
 The managed LibOps platform is the next layer when the institution wants LibOps to handle hosting, firewall rules, Vault-backed secrets, preview environments, membership management, and production rollouts.
 
@@ -51,7 +51,7 @@ Instead of asking every project to solve basic operations on its own, LibOps giv
     All application settings and deployment logic live in version control.
   </Card>
   <Card title="Consistency" icon="laptop-code">
-    Local development and production use identical patterns.
+    Local development and production share the tracked workload contract while keeping environment-specific secrets, storage, ingress, and policy separate.
   </Card>
   <Card title="Resource Model" icon="hierarchy">
     Secrets, members, and rules are structured resources.
@@ -95,7 +95,7 @@ Each production workload runs on a distinct runtime host. Non-production environ
 
 ## Application lifecycle
 
-Every LibOps template follows the same application lifecycle. Site managers work through the Dashboard; technical staff use the API and `sitectl`; the underlying repository and Docker Compose project stay consistent across environments.
+Every LibOps template follows the same declared application lifecycle. Site managers work through the Dashboard; technical staff use the API and `sitectl`; the underlying repository and Docker Compose project remain the workload source of truth.
 
 <Steps>
   <Step title="Create the site" icon="folder-plus">
@@ -116,7 +116,7 @@ Every LibOps template follows the same application lifecycle. Site managers work
 </Steps>
 
 <Tip>
-Technical teams still get the same repo-level Make targets across templates. See the [Engineer Guide](/platform/engineer-guide) and [Application Templates](/templates/app-support) for the developer-facing details.
+Technical teams can inspect the same Compose, image, plugin, and migration contract used by the platform. See the [Engineer Guide](/platform/engineer-guide) and [Application Image and Template Contract](/templates/app-support).
 </Tip>
 
 ## Platform resource model
@@ -145,7 +145,7 @@ The LibOps platform supports both manual oversight and automated workflows.
   <Card title="Management Dashboard" icon="gauge" href="https://dash.libops.io">
     Hosted UI for day-to-day project management, site monitoring, and member administration.
   </Card>
-  <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
+  <Card title="sitectl CLI" icon="terminal" href="https://sitectl.libops.io">
     Command-line tool for local and remote environments, logs, port forwarding, and deployments.
   </Card>
   <Card title="Platform API" icon="code" href="/api/reference/introduction">

@@ -1,82 +1,115 @@
 ---
 title: "Security and Operations"
-description: "How LibOps approaches ingress, secrets, updates, access control, and operational governance"
+description: "Managed-platform security defaults and the responsibilities retained by self-hosted operators"
 ---
 
-## Security defaults
+Security ownership changes with the adoption layer. Cloudflare edge policy, LibOps Vault resources, platform membership, and managed runtime operations apply to LibOps-managed sites. They are not automatically added to a Compose template or a cloud-compose deployment in an institution's account.
 
-LibOps turns common security responsibilities into platform defaults, so the secure path is the standard path for every institution.
+<Info>
+For the full self-hosted checklist, including Terraform state, cloud IAM, secret delivery, backups, and restore testing, see [Self-Hosted Operations](/infrastructure/self-hosted-operations).
+</Info>
+
+## Managed-platform defaults
 
 <CardGroup cols={3}>
-  <Card title="Encrypted traffic and secrets" icon="lock">
-    All traffic is encrypted in transit via Cloudflare edge protection and HashiCorp Vault-backed secret management.
+  <Card title="Edge protection" icon="shield">
+    Managed public sites use LibOps-managed ingress and Cloudflare policy for encrypted traffic, routing, and edge controls.
   </Card>
-  <Card title="Dedicated isolation" icon="server">
-    Each production site runs on its own **Single-Tenant Virtual Machine**, providing a clear compute and security boundary.
+  <Card title="Vault-backed secrets" icon="lock">
+    Managed platform secrets are stored and scoped as platform resources rather than committed to repositories or copied into unmanaged environment files.
   </Card>
-  <Card title="Automated updates" icon="shield-check">
-    **Renovate-backed** workflows keep application dependencies, container images, and platform components continuously updated.
+  <Card title="Runtime isolation" icon="server">
+    Each managed production site runs on a dedicated virtual machine. Non-production environments use a separate runtime boundary.
   </Card>
 </CardGroup>
 
-## Managed Ingress
+## Managed ingress
 
-LibOps places Cloudflare at the front door for sites. Cloudflare ingress helps keep common bot traffic, abuse patterns, and unwanted request volume away from application servers.
+LibOps places Cloudflare in front of managed public sites. Edge policy helps keep common abuse and unwanted request volume away from application hosts while centralizing TLS and routing operations.
 
-This gives institutions a stronger public edge without asking every project team to design its own ingress and bot-management pattern.
+Self-hosted operators must supply their own DNS, certificate lifecycle, trusted-proxy configuration, firewall policy, and abuse controls. Enabling Traefik in a template does not provide the surrounding edge service.
 
-## Vault-Backed Secrets
+## Private VM delivery on Google Cloud
 
-LibOps provides HashiCorp Vault-backed secret storage for organizations. Site credentials, application secrets, API tokens, and environment-specific configuration can be managed as platform resources instead of being scattered across personal files, shell history, or unmanaged `.env` copies.
+For the managed GCP design, a site-facing Cloud Run service can reach the application's private VM address through Direct VPC **egress** without a Serverless VPC Access connector. The same pattern carries authenticated controller requests to the private rollout endpoint. This does not enable Direct VPC ingress for Cloud Run services: external traffic still enters the declared Cloud Run and edge ingress paths.
 
-Secrets can be scoped at organization, project, or site level so shared values and environment-specific overrides stay intentional.
+Cloud Run revision addresses are ephemeral, so the VM firewall cannot safely allow individual addresses or use a Cloud Run service identity as an ingress source. It allows the complete selected subnet CIDR on only the required application or controller port and targets the runtime VM service account. Treat every workload on that subnet as part of the source trust zone. The project foundation owns the Cloud Run service agent and network-use permissions; runtime state narrows start and suspend permissions to the selected VM.
 
-## DevSecOps Updates
+The Cloud Run service and subnet must be in compatible regions, the subnet must have capacity for `/28` allocation blocks and overlapping revisions, and the network must use Cloud Run's default MTU of `1460`. A `/26` is the minimum, not a sizing recommendation for a busy shared subnet.
 
-LibOps templates use Renovate and shared maintenance workflows to keep the software supply chain moving.
+Ordinary Direct VPC services should delay readiness until a bounded egress-aware startup probe succeeds. The power proxy cannot probe the application as a startup condition because its purpose is to accept the first request while the VM is off. Its bounded power-on and backend connection retry is the exception. Clients and services must still handle occasional connection resets during network maintenance.
 
-Renovate can propose updates for:
+## Vault-backed secrets
 
-- Core application versions.
-- Plugins, themes, modules, Composer packages, npm packages, Go modules, and other dependencies.
-- Docker images and base images.
-- Operating system packages exposed through image builds.
-- LibOps platform packages, `sitectl` plugins, template conventions, and platform infrastructure references.
+The managed platform can scope secrets at organization, project, and site level. Runtime delivery keeps the values outside the site repository.
 
-The value is visibility and repeatability. Updates become reviewable repository changes that can move through the same rollout process as application work.
+Self-hosted deployments choose and operate their own secret system. GCP deployments can integrate with a consumer-configured Vault GCP IAM role. DigitalOcean, Linode, and on-premises deployments require a consumer-managed authentication method. In every environment:
 
-## Role-Based Access Control
+- keep database administrator credentials out of the long-running app;
+- prefer short-lived workload identity over exported service-account keys;
+- do not pass secrets through Terraform rootfs, cloud-init, or generic environment inputs;
+- rotate credentials and test the application after rotation;
+- restrict secret files and backend state to the identities that need them.
 
-LibOps uses role-based access control across organizations, projects, and sites. Members can be granted access at the level that matches their responsibility.
+## Dependency and image updates
 
-This supports a practical governance model:
+LibOps templates use Renovate and repository workflows to propose changes for:
 
-- Organization owners can manage broad access and shared settings.
-- Project members can operate related sites without receiving access to unrelated programs.
-- Site members can work on a specific environment when they do not need broader authority.
+- application and runtime images;
+- image digests and base images;
+- Composer, npm, Go, and application packages;
+- themes, plugins, and modules represented in the repository;
+- sitectl core and independently versioned plugins;
+- infrastructure module references.
 
-For accounts with a GitHub username, LibOps can also sync repository collaborator permissions from membership. Owner/developer access grants write permission on affected site repositories, while viewer access grants read permission.
+An update is not complete because a pull request exists. It still needs CI, application smoke testing, migration review, a production-shaped preview where appropriate, a verified backup, and post-deployment health checks.
 
-## OAuth and Slack Integration
+Production artifacts and Terraform modules should use immutable references. Automatic updates of privileged containers, Docker-socket consumers, or host-management services from moving `main` or `latest` tags are outside the supported security model.
 
-OAuth-based authentication and Slack integration connect LibOps to the way teams already work. Platform identity, team communication, and operational workflows should stay connected.
+## Role-based access
 
-Slack integration is especially useful for support, notifications, and team workflows around site activity.
+The LibOps platform applies role-based access across organizations, projects, and sites:
 
-## Runtime Isolation
+- organization owners manage broad access and shared resources;
+- project members operate related sites without access to unrelated programs;
+- site members work on a specific environment.
 
-Production sites run on dedicated runtime hosts. Non-production environments for the same project can share a separate host, keeping preview and staging work outside the production boundary while avoiding unnecessary infrastructure for short-lived environments.
+When enabled for an account with a GitHub username, LibOps can synchronize repository collaborator permissions from platform membership. Customer-owned repositories remain subject to the permissions granted to the LibOps GitHub App.
 
-For organizations evaluating risk, this is simpler to reason about than shared hosting where unrelated applications compete inside the same runtime.
+Self-hosted teams must define the equivalent separation across the cloud account, Terraform backend, source repository, secret system, host access, and backup storage. One administrator credential should not become the universal deployment identity.
 
-## Operational Accountability
+## Runtime and data isolation
 
-LibOps keeps application work tied to repositories, rollout scripts, and platform operations. This helps avoid production changes that only exist on a server.
+Managed production workloads run on distinct hosts. That creates a clear compute boundary, but isolation does not replace application security, dependency updates, least privilege, monitoring, or backups.
 
-The result is an operational model that supports:
+Self-hosted deployments should keep these concerns separate:
 
-- Clearer audit trails.
-- Repeatable deployments.
-- Safer dependency updates.
-- Easier handoff between LibOps, customer developers, and support staff.
-- Better continuity when team members change.
+| Concern | Required boundary |
+| --- | --- |
+| Application image | Immutable artifact; no live production edits |
+| Site configuration | Reviewed repository state |
+| Credentials | Protected secret delivery, not Git or image layers |
+| Database and uploads | Persistent storage with independent backups |
+| Terraform state | Remote, encrypted, locked, access-controlled backend |
+| Management services | Pinned, verified artifacts with tightly scoped privileges |
+
+## Operational accountability
+
+LibOps ties managed application changes to repositories, pull requests, declared lifecycle metadata, and platform operations. That supports:
+
+- reviewable configuration and dependency changes;
+- repeatable deployments;
+- clearer audit trails;
+- explicit migration gates;
+- handoff between LibOps, customer developers, and support staff.
+
+Self-hosted teams should preserve the same record. Manual production changes, local-only state, unverified downloads, and undocumented restore procedures create an operating path that the templates and plugins cannot safely maintain.
+
+<CardGroup cols={2}>
+  <Card title="Release compatibility" icon="arrows-rotate" href="/infrastructure/release-compatibility">
+    Update images, templates, sitectl packages, and infrastructure in dependency order.
+  </Card>
+  <Card title="GitHub integration" icon="github" href="/platform/github">
+    Review repository permissions, previews, and short-lived GitHub App token handling.
+  </Card>
+</CardGroup>

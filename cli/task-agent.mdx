@@ -1,47 +1,8 @@
 ---
-title: 'Task Agent'
-description: 'Create and manage LibOps Task Agent tasks from sitectl'
+title: 'sitectl Task Agent commands'
+description: 'Find the maintained LibOps Task Agent command reference'
 ---
 
-Task Agent commands run LibOps coding-agent work from the terminal.
+This legacy route is retained for existing links. Current command syntax is documented in the [sitectl LibOps Task Agent reference](https://sitectl.libops.io/plugins/libops/task).
 
-Supported harnesses are `codex`, `claude`, `pi`, `opencode`, and `gemini`. They run through the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) image.
-
-The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported. They run inside your organization's infrastructure on the LibOps-managed platform, with access limited to members of your organization. LibOps evaluates new open weight models as they become available. Contact [LibOps](https://www.libops.io/contact/) if your organization wants to integrate with Anthropic, OpenAI, or another model provider.
-
-For site coding tasks, the runner prepares the checked-out Compose project with sitectl before the agent starts:
-
-```bash
-sitectl set dev-mode enabled --assistant --harness codex --compose-access --yolo
-```
-
-That writes the plugin-owned development mounts and a profiled `cli-sandbox` service into `docker-compose.override.yml`, so the agent sees the same editable code paths that local dev mode uses.
-
-## Create
-
-```bash
-sitectl libops task create \
-  --organization-id "$ORGANIZATION_ID" \
-  --site-id "$SITE_ID" \
-  "Update the homepage banner and open a pull request."
-```
-
-By default the command attaches and polls for updates. Use `--no-wait` to return after queueing.
-
-```bash
-sitectl libops task create \
-  --organization-id "$ORGANIZATION_ID" \
-  --project-id "$PROJECT_ID" \
-  --no-wait \
-  "Audit deployment configuration."
-```
-
-## List, inspect, respond, and cancel
-
-```bash
-sitectl libops task list --organization-id "$ORGANIZATION_ID"
-sitectl libops task get "$TASK_ID" --organization-id "$ORGANIZATION_ID"
-sitectl libops task attach "$TASK_ID" --organization-id "$ORGANIZATION_ID"
-sitectl libops task respond "$TASK_ID" "Use main." --organization-id "$ORGANIZATION_ID"
-sitectl libops task cancel "$TASK_ID" --organization-id "$ORGANIZATION_ID"
-```
+For the platform workflow and review boundary, see [Coding Agent Workflow](/platform/coding-agent-workflow).

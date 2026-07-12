@@ -28,6 +28,14 @@ Teams can use the API to integrate LibOps with provisioning systems, reporting w
   Explore the LibOps API endpoints and OpenAPI specification.
 </Card>
 
+## Platform and workload boundary
+
+The API records authorized desired state for organizations, projects, runtimes, sites, access, secret references, firewall policy, and deployments. Retrying infrastructure and site work belongs to durable control-plane operations, not to a long-running API request or a second application lifecycle embedded in the API.
+
+Terraform runner jobs reconcile infrastructure states. Controller delivery invokes the same checked-out repository and plugin-declared lifecycle used by a self-hosted operator. A platform operation is not complete merely because the API accepted it, Terraform produced a plan, or an application-only migration gate started dependencies; callers should follow the recorded operation through its terminal status.
+
+The site repository remains the workload source of truth. The API does not replace its Compose graph, Composer lockfile, Buildkit image pin, plugin component state, or downstream code.
+
 ## sitectl
 
 `sitectl` is the LibOps command-line utility for operating local and remote Docker Compose sites.
@@ -68,6 +76,6 @@ Common tooling lowers the cost of adopting open-source software. When more GLAM 
 
 LibOps uses the API and `sitectl` together so platform operations can support both ends of that spectrum: centralized automation for repeatability, and hands-on command-line workflows for people doing the application work.
 
-<Card title="sitectl CLI Reference" icon="terminal" href="/cli/introduction">
+<Card title="sitectl CLI Reference" icon="terminal" href="https://sitectl.libops.io">
   Install and configure `sitectl`.
 </Card>

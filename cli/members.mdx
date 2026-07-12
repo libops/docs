@@ -1,35 +1,8 @@
 ---
-title: 'Members'
-description: 'Manage LibOps members for organizations, projects, and Sites'
+title: 'LibOps members in sitectl'
+description: 'Find the maintained LibOps access-control command reference'
 ---
 
-Members are scoped to exactly one organization, project, or Site. Use `owner`, `developer`, or `read` roles.
+This legacy route is retained for existing links. Current member and role operations are documented in the [sitectl LibOps access-controls reference](https://sitectl.libops.io/plugins/libops/access-controls).
 
-For the platform model behind these scopes, see [Resource Hierarchy](/platform/resource-hierarchy).
-
-Use project membership for people who should work across every environment in a project. Use site membership for environment-specific access. In the managed platform, production site members apply only to production; non-production site members are treated as the shared non-production access set for that project.
-
-## Create
-
-```bash
-sitectl libops create member --organization-id "$ORGANIZATION_ID" --email "owner@example.edu" --role owner
-sitectl libops create member --project-id "$PROJECT_ID" --email "developer@example.edu" --role developer
-sitectl libops create member --site-id "$SITE_ID" --email "reader@example.edu" --role read
-```
-
-## List
-
-```bash
-sitectl libops list members --organization-id "$ORGANIZATION_ID"
-sitectl libops list members --project-id "$PROJECT_ID"
-sitectl libops list members --site-id "$SITE_ID"
-```
-
-## Edit and delete
-
-```bash
-sitectl libops edit member "$ACCOUNT_ID" --project-id "$PROJECT_ID" --role owner
-sitectl libops delete member "$ACCOUNT_ID" --site-id "$SITE_ID" --yes
-```
-
-Members are identified by account ID for update and delete.
+For membership scope and inheritance, see [Resource Hierarchy](/platform/resource-hierarchy).

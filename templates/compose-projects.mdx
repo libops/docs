@@ -1,51 +1,74 @@
 ---
-title: 'Compose Project Catalog'
-description: 'Supported LibOps Docker Compose projects, default service composition, and sitectl plugin ownership'
+title: "Compose Project Catalog"
+description: "Supported LibOps Docker Compose projects, application plugins, and default workload composition"
 ---
 
-LibOps templates use Docker Compose as the workload definition. You can operate the template directly with the Docker Compose CLI. `sitectl` adds saved contexts, app-specific commands, and reusable service behavior when teams want a more consistent operator interface.
+LibOps templates use Docker Compose as the tracked workload definition. You can inspect and operate each repository as a normal Compose project. `sitectl` adds contexts, common lifecycle behavior, health checks, components, and application-aware operations without embedding another copy of the project.
 
-## Platform rules
+## Template rules
 
-- Web applications route through Traefik.
-- LAMP applications use MariaDB by default.
-- Search-backed defaults are explicit: Drupal and ArchivesSpace ship with Solr enabled.
-- Shared services are owned by service plugins, not copied independently into every application plugin.
-- Standalone application compose projects own app-specific wiring such as `depends_on`, environment variables, volumes, and rollout helpers.
-- Generated secrets, local `.env` files, local certificates, vendored dependency trees, and build caches stay out of release artifacts.
+- Web traffic enters through Traefik.
+- LAMP applications use MariaDB.
+- Search services are explicit in the workload.
+- Direct images use readable tags and immutable digests.
+- Database administrator credentials are limited to MariaDB and the one-shot database initializer.
+- Long-running applications receive scoped database credentials.
+- Application services wait for healthy dependencies and successful one-shot initialization.
+- Production behavior stays in the tracked Compose file. Local overrides are untracked.
+- Core `sitectl` owns shared Compose and service operations; application plugins own only app-aware metadata and helpers.
+
+See [Application Image and Template Contract](/templates/app-support) for the image, configuration, secret, and data boundaries.
 
 ## Application projects
 
-| Application | sitectl plugin | Compose project path | Default services |
-|---|---|---|---|
-| ArchivesSpace | `sitectl-archivesspace` | `./archivesspace` | ArchivesSpace, Traefik, MariaDB, Solr |
-| Drupal | `sitectl-drupal` | `./drupal` | Drupal, Traefik, MariaDB, Solr |
-| Islandora | `sitectl-isle` | chosen during create | Drupal/Islandora stack with MariaDB, Solr, Traefik, Fedora, Blazegraph, and IIIF services |
-| Open Journal Systems | `sitectl-ojs` | `./ojs` | OJS, Traefik, MariaDB |
-| Omeka Classic | `sitectl-omeka-classic` | `./omeka-classic` | Omeka Classic, Traefik, MariaDB |
-| Omeka S | `sitectl-omeka-s` | `./omeka-s` | Omeka S, Traefik, MariaDB |
-| WordPress | `sitectl-wp` | `./wp` | WordPress, Traefik, MariaDB |
+| Application | Application plugin | Default workload |
+| --- | --- | --- |
+| ArchivesSpace | `sitectl-archivesspace` | ArchivesSpace, Traefik, MariaDB, ArchivesSpace Solr |
+| Drupal | `sitectl-drupal` | Drupal, Traefik, MariaDB, Solr |
+| Islandora | `sitectl-isle` | Drupal/Islandora, Traefik, MariaDB, Solr, derivative services, and selectable repository, RDF, bot-mitigation, and IIIF components |
+| Open Journal Systems | `sitectl-ojs` | OJS, Traefik, MariaDB |
+| Omeka Classic | `sitectl-omeka-classic` | Omeka Classic, Traefik, MariaDB |
+| Omeka S | `sitectl-omeka-s` | Omeka S, Traefik, MariaDB |
+| WordPress | `sitectl-wp` | WordPress, Traefik, MariaDB |
 
-The app plugin repositories do not carry embedded copies of these compose projects. The create flow clones the matching standalone template repository and places it at the listed default path.
+The create flow clones the standalone template repository. Plugin repositories carry the template contract and application behavior, not an embedded copy of the Compose project.
 
-Triplet is the exception. Triplet has its own application source repository, including `deploy/compose/docker-compose.yaml`. `sitectl-triplet` owns the reusable Triplet service component rather than duplicating the full Triplet source tree.
+## Islandora components
 
-## Operator pattern
+Islandora has architectural choices that do not belong in separate lifecycle plugins:
 
-Start with the app plugin for application work:
+- Fedora can run locally or be superseded by another filesystem-backed repository approach.
+- Blazegraph can be enabled or disabled.
+- IIIF can use Cantaloupe or Triplet.
+- The selected IIIF service can run locally or behind a distributed upstream.
+- Derivative microservices can run in the base workload or use supported external services.
 
-```bash
-sitectl wp rollout
-sitectl ojs scheduled-tasks
-sitectl drupal drush cr
-```
+Triplet is managed by the ISLE plugin's `iiif` and `iiif-topology` components. There is no separate `sitectl-triplet` binary or Triplet lifecycle namespace.
 
-Use service plugins for shared operations:
+## Operator boundary
 
-```bash
-sitectl mariadb backup --output backups/site.sql
-sitectl component describe traefik
-sitectl set solr disabled
-```
+Use core commands for common operations:
 
-This keeps operational behavior composable. The application plugin owns what makes the app different; the service plugin owns behavior that should be consistent across every app using that service.
+- Compose lifecycle, logs, process status, and deployment;
+- health, validation, and debugging;
+- MariaDB, Solr, Traefik, and other shared service operations;
+- component inspection and state changes.
+
+Use the application namespace for work that requires application knowledge, such as Drush, WP-CLI, OJS scheduled tasks, or application API helpers.
+
+The full command surface belongs in the sitectl documentation:
+
+<CardGroup cols={2}>
+  <Card title="Managed applications" icon="boxes-stacked" href="https://sitectl.libops.io/apps">
+    See how templates, contexts, and application plugins fit together.
+  </Card>
+  <Card title="Core services" icon="database" href="https://sitectl.libops.io/plugins/core-services">
+    Use shared service operations without app-specific aliases.
+  </Card>
+  <Card title="Components" icon="sliders" href="https://sitectl.libops.io/components">
+    Understand component state, dispositions, and drift repair.
+  </Card>
+  <Card title="Compose commands" icon="terminal" href="https://sitectl.libops.io/commands/compose">
+    Operate the active local or remote Compose context.
+  </Card>
+</CardGroup>

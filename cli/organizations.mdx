@@ -1,46 +1,8 @@
 ---
-title: 'Organizations'
-description: 'Manage LibOps organizations from sitectl'
+title: 'LibOps organizations in sitectl'
+description: 'Find the maintained LibOps resource command reference'
 ---
 
-Organizations are the top-level LibOps resource. Projects belong to organizations.
+This legacy route is retained for existing links. Current organization operations are documented in the [sitectl LibOps resource reference](https://sitectl.libops.io/plugins/libops/resources).
 
-## Create
-
-```bash
-sitectl libops create organization \
-  --name "Example Library" \
-  --location LOCATION_US \
-  --region us-central1
-```
-
-## List and get
-
-```bash
-sitectl libops list organizations
-sitectl libops list organizations --no-cache
-sitectl libops get organization "$ORGANIZATION_ID"
-```
-
-## Edit and delete
-
-```bash
-sitectl libops edit organization "$ORGANIZATION_ID" --name "Library Services"
-sitectl libops delete organization "$ORGANIZATION_ID"
-sitectl libops delete organization "$ORGANIZATION_ID" --yes
-```
-
-Deleting an organization starts irreversible removal of its projects, sites, and managed infrastructure. Back up data before requesting deletion; LibOps cannot guarantee recovery after deletion starts.
-
-Organization location and region are set when the organization is created and cannot be updated by the current API.
-
-## Related scopes
-
-Organization-level members, firewall rules, secrets, and settings apply across all projects and sites in that organization:
-
-```bash
-sitectl libops create member --organization-id "$ORGANIZATION_ID" --account-id "$ACCOUNT_ID" --role developer
-sitectl libops create firewall --organization-id "$ORGANIZATION_ID" --name office --cidr 203.0.113.0/24
-sitectl libops create secret --organization-id "$ORGANIZATION_ID" --name SMTP_PASSWORD --value "$SMTP_PASSWORD"
-sitectl libops create setting --organization-id "$ORGANIZATION_ID" --key support_email --value help@example.edu
-```
+For resource ownership and inheritance, see [Resource Hierarchy](/platform/resource-hierarchy).

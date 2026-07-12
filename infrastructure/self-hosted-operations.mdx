@@ -1,0 +1,172 @@
+---
+title: "Self-Hosted Operations"
+description: "The state, identity, secret, data-protection, monitoring, and recovery responsibilities retained by self-hosted teams"
+---
+
+Running a LibOps template outside the managed platform gives the institution control of the repository and infrastructure. It also makes the institution the production operator.
+
+Compose, sitectl, and cloud-compose provide a consistent workload and automation surface. They do not supply a cloud account, Terraform backend, secret service, offsite backup policy, monitoring team, or disaster-recovery decision.
+
+## Shared responsibility
+
+| Concern | LibOps project provides | Self-hosted operator provides |
+| --- | --- | --- |
+| Application workload | Supported template, image contract, plugin lifecycle, and health behavior | Site fork, configuration review, application policy, and release approval |
+| Infrastructure | Provider modules and host bootstrap | Cloud account, credentials, IAM, region, quotas, network, DNS, and Terraform execution |
+| Secrets | Compose secret boundary and optional integration points | Secret store, authentication, values, rotation, recovery, and access audit |
+| Persistent data | Declared volumes and disk mount contract | Capacity, deletion protection, encryption policy, backup copies, and restore testing |
+| Updates | Renovate metadata, release artifacts, and compatibility guidance | Review, CI, preview, migration decision, maintenance window, and rollback plan |
+| Monitoring | Container health and application checks | Alert delivery, logs, metrics, on-call ownership, and incident response |
+
+## Protect Terraform state
+
+Terraform state is production data. It can include resource identifiers, network details, rendered user data, cloud-init content, environment values, and values marked sensitive by providers or modules.
+
+Use a remote backend with:
+
+- encryption at rest and in transit;
+- locking or another concurrency control;
+- version history and recovery;
+- least-privilege read and write access;
+- audit logs;
+- a separate access path from routine application development.
+
+Do not commit `terraform.tfstate`, backup state files, plan files, backend credentials, or copied state fragments. A `sensitive` Terraform value is hidden from normal CLI output; it is not necessarily absent from state.
+
+Keep production and non-production state separate. Review every plan for replacement or deletion of a VM, disk, network, service account, firewall rule, or DNS dependency before applying it.
+
+## Identity and access
+
+Separate the identities used for:
+
+- Terraform administration;
+- host runtime operations;
+- application access to cloud or Vault services;
+- source-repository checkout;
+- backup writing and restore;
+- human SSH access.
+
+Prefer workload identity and short-lived tokens. Avoid personal access tokens, shared administrator accounts, and persistent cloud keys on the VM. If a legacy integration requires a key, scope and rotate it, monitor its use, and keep the deletion procedure with the deployment record.
+
+Restrict SSH and management endpoints to reviewed source ranges or private access paths. A public application port does not justify a public Docker API, database, rollout endpoint, or host-management service.
+
+## Treat the host runtime as privileged
+
+Docker-socket consumers, privileged observability containers, host updaters, service-account key rotation, and anything with broad host mounts are inside the host's root trust boundary. A container image does not isolate the host from code that has those capabilities.
+
+Cloud-compose releases that implement the modular runtime contract leave privileged internal services and automatic updates disabled unless the operator opts in; GCP power management implies the internal services it needs. Confirm that the exact selected release exposes those controls before relying on the defaults. Keep them off when their capability is unnecessary. When enabled, pin every artifact, restrict who can change its configuration, monitor the systemd units, and include their credentials and failure modes in the incident runbook.
+
+Ansible and Salt installation is supported only on a dedicated, otherwise empty Debian or Ubuntu host after explicit acknowledgement. Those adapters own Docker, systemd, logging/runtime files, and fixed cloud-compose paths; they are not safe overlays for an unrelated shared server. Their cloud-compose-managed Vault Agent path is unsupported.
+
+## Secret delivery
+
+The application template enforces a database boundary:
+
+- MariaDB and `database-init` can receive the database root credential;
+- `database-init` creates the scoped application database and user;
+- the long-running application receives only the scoped password.
+
+Preserve that separation when integrating Vault or another secret store.
+
+Do not place secret values in:
+
+- the site repository or image build context;
+- Terraform rootfs, cloud-init, metadata, or generic environment maps;
+- shell command strings or shell history;
+- CI logs, plan artifacts, or debug bundles;
+- unencrypted local backups.
+
+GCP can support a consumer-configured workload-identity path for Vault. DigitalOcean, Linode, and on-premises hosts require consumer-managed authentication. The operator owns Vault availability, auth roles, policies, mounts, token renewal, audit, and disaster recovery.
+
+## Know where the data lives
+
+The Git repository and application image are replaceable. The database, uploads, repository objects, indexes, and secret material are not.
+
+Inventory every persistent location:
+
+- MariaDB data;
+- application uploads and private files;
+- Fedora or other repository data where enabled;
+- Solr and other indexes, including whether they are reproducible;
+- local configuration generated outside Git;
+- Terraform state;
+- Vault or secret-service state;
+- local backup staging directories.
+
+Record which disk or volume holds each path and what happens during VM replacement, module changes, `docker compose down -v`, Terraform destroy, or provider account closure.
+
+## Backups are more than local dumps
+
+Some cloud-compose releases can install a timer that writes MariaDB dumps under the persistent data disk. That is a useful first copy, not a complete backup system.
+
+A production plan should include:
+
+- database dumps or application-consistent snapshots;
+- uploaded files and repository objects;
+- configuration and secret recovery material;
+- an encrypted off-host and, where required, off-account copy;
+- retention and immutability policy;
+- monitoring for missed or incomplete backups;
+- documented restore order;
+- periodic restoration into an isolated environment.
+
+Snapshots alone may capture an inconsistent database. Coordinate quiescing, database-native backup, or application consistency before treating a disk snapshot as recoverable.
+
+Define:
+
+- **RPO:** how much recent data the institution can lose;
+- **RTO:** how long the site can remain unavailable;
+- who can authorize and perform a restore;
+- how DNS, certificates, secrets, and provider identity are reconnected.
+
+<Warning>
+A backup job that has never been restored is an untested artifact. Complete a restore drill before the first production launch and after material database, storage, encryption, or provider changes.
+</Warning>
+
+## Production readiness checklist
+
+Before launch:
+
+- protect and test the Terraform backend;
+- restrict IAM, SSH, firewall rules, and management endpoints;
+- configure DNS, TLS renewal, and trusted proxies;
+- verify direct images use digests, Compose repositories use reviewed full commits, modules use exact refs, and each sitectl package has its own reviewed version;
+- confirm disks and volumes survive the expected VM replacement path;
+- deliver secrets without Terraform or Git;
+- run a backup and restore drill;
+- configure application health, host capacity, disk, certificate, and backup alerts;
+- document host and container patching;
+- name the team responsible for incidents and maintenance windows.
+
+Before an upgrade:
+
+- review image, template, plugin, and cloud module compatibility;
+- test the migration on non-production data;
+- take and verify the required backup;
+- record the previous immutable references;
+- understand whether a schema migration makes image rollback unsafe;
+- inspect VM, boot-disk, public-IP, IAM, and persistent-disk replacement effects when adopting a modular cloud-compose release;
+- verify the site, scheduled jobs, email, search, and public routes afterward.
+
+See [Release Compatibility and Upgrades](/infrastructure/release-compatibility) for dependency ordering.
+
+## Unsupported operating shortcuts
+
+- Local-only Terraform state for a shared production service.
+- State, plan files, credentials, or database dumps committed to Git.
+- A single administrator identity shared by Terraform, the VM, the application, and backups.
+- Root database credentials in the public application container.
+- Local backups on the same disk as the only copy of the live data.
+- Automatic production updates from mutable tags without CI and human review.
+- Public Docker, database, or rollout ports without explicit authentication and network restrictions.
+- Assuming a green container health check proves backups, scheduled jobs, mail delivery, or application behavior.
+- Applying destructive infrastructure changes before testing recovery.
+
+<CardGroup cols={2}>
+  <Card title="cloud-compose boundary" icon="server" href="/infrastructure/cloud-compose">
+    Review provider prerequisites, existing-host bootstrap, and input safety.
+  </Card>
+  <Card title="Security and operations" icon="lock" href="/platform/security-operations">
+    Compare these responsibilities with the managed-platform defaults.
+  </Card>
+</CardGroup>

@@ -1,438 +1,74 @@
 ---
 title: "Quickstart"
-description: "Create and manage your first supported LibOps site"
+description: "Create and prepare your first supported LibOps site"
 ---
 
-## Get started in four steps
-
-Create your first supported LibOps site and start managing it through the dashboard, Slack, `sitectl`, and the platform API.
-
-Site managers can do most of this work in the dashboard. Engineers can use the CLI examples when they need automation, repository access, or local development workflows.
-
-### Step 1: Create your account
-
-<AccordionGroup>
-  <Accordion icon="user-plus" title="Sign up for LibOps">
-    You can create an account using either the CLI or web browser.
-
-    **Option A: Using sitectl CLI**
-
-    Install sitectl and authenticate:
-
-    ```bash
-    # Download sitectl (see CLI documentation for your platform)
-    curl -L https://github.com/libops/sitectl/releases/latest/download/sitectl_linux_amd64 -o sitectl
-    chmod +x sitectl
-    sudo mv sitectl /usr/local/bin/
-
-    # Login or register
-    sitectl libops login
-    ```
-
-    This will open your browser where you can:
-    - Sign in with Google
-    - Or create an account with email/password
-
-    **Option B: Using your browser**
-
-    Visit the [LibOps dashboard](https://dash.libops.io) to:
-    - Sign in with Google
-    - Or register with email/password
-
-    <Tip>After logging in via browser, run `sitectl libops login` to authenticate your CLI.</Tip>
-  </Accordion>
-
-  <Accordion icon="terminal" title="Verify authentication">
-    Confirm you're logged in:
-
-    ```bash
-    sitectl whoami
-    ```
-
-    You should see your authentication status and token information.
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Create your infrastructure
-
-For site managers, the dashboard path is the recommended path:
-
-1. Open the [LibOps dashboard](https://dash.libops.io).
-2. Create or choose your organization.
-3. Create a project for the collection, journal, repository, or web property.
-4. Create a site from a supported LibOps template.
-5. Keep the site private while staff review it, then follow the publishing checklist when it is ready.
-
-Engineers can use the same resource model through `sitectl`:
-
-<AccordionGroup>
-  <Accordion icon="building" title="Create an organization">
-    Organizations are the top-level container for all your resources.
-
-    ```bash
-    sitectl libops create organization \
-      --name "Example Museum" \
-      --location LOCATION_US \
-      --region us-central1
-    ```
-
-    Save the organization ID from the output, or retrieve it later:
-
-    ```bash
-    # List all organizations
-    sitectl libops list organizations
-
-    # Get organization ID as JSON
-    ORG_ID=$(sitectl libops list organizations --format json | jq -r '.[0].ID')
-    echo $ORG_ID
-    ```
-  </Accordion>
-
-  <Accordion icon="folder" title="Create a project">
-    Projects group related sites together within an organization.
-
-    ```bash
-    # Replace with your organization ID
-    sitectl libops create project \
-      --organization-id org_abc123 \
-      --name "Digital Collections" \
-      --region us-central1 \
-      --zone us-central1-f \
-      --machine-type e2-standard-2 \
-      --disk-size-gb 100
-    ```
-
-    Or capture the project ID automatically:
-
-    ```bash
-    PROJECT_ID=$(sitectl libops create project \
-      --organization-id $ORG_ID \
-      --name "Digital Collections" \
-      --region us-central1 \
-      --zone us-central1-f \
-      --machine-type e2-standard-2 \
-      --disk-size-gb 100 \
-      --format json | jq -r '.id')
-
-    echo "Created project: $PROJECT_ID"
-    ```
-  </Accordion>
-
-  <Accordion icon="globe" title="Create a site">
-    Sites represent individual Docker Compose deployments.
-
-    ```bash
-    # Replace with your project ID
-    sitectl libops create site \
-      --project-id proj_xyz789 \
-      --name "collections" \
-      --github-repository git@github.com:example/collections.git \
-      --github-ref heads/main \
-      --compose-path /mnt/disks/data/compose \
-      --compose-file docker-compose.yml \
-      --application-type islandora
-    ```
-
-    Or capture the site ID:
-
-    ```bash
-    SITE_ID=$(sitectl libops create site \
-      --project-id $PROJECT_ID \
-      --name "collections" \
-      --github-repository git@github.com:example/collections.git \
-      --github-ref heads/main \
-      --compose-path /mnt/disks/data/compose \
-      --compose-file docker-compose.yml \
-      --application-type islandora \
-      --format json | jq -r '.id')
-
-    echo "Created site: $SITE_ID"
-    ```
-
-    <Tip>Keep your site ID handy - you'll need it for adding secrets and configuring access.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Configure your site
-
-<AccordionGroup>
-  <Accordion icon="key" title="Add secrets">
-    Store your application's sensitive configuration as encrypted secrets.
-
-    ```bash
-    # Database credentials
-    sitectl libops create secret \
-      --site-id site_123abc \
-      --name "DATABASE_URL" \
-      --value "mysql://user:password@mariadb.example.com/myapp"
-
-    # API keys
-    sitectl libops create secret \
-      --site-id site_123abc \
-      --name "STRIPE_SECRET_KEY" \
-      --value "sk_live_abc123xyz"
-
-    # Application secrets
-    sitectl libops create secret \
-      --site-id site_123abc \
-      --name "APP_SECRET" \
-      --value "your-secret-key-here"
-    ```
-
-    <Note>Secret values are encrypted and never displayed after creation.</Note>
-  </Accordion>
-
-  <Accordion icon="shield" title="Configure firewall rules">
-    LibOps sites are IP-allowlisted by default. Add rules for the people who should reach the site, or add a public rule when a production site is ready to publish.
-
-    ```bash
-    # Allow office network
-    sitectl libops create firewall \
-      --site-id site_123abc \
-      --cidr "203.0.113.0/24" \
-      --name "office" \
-      --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-
-    # Allow specific admin IP
-    sitectl libops create firewall \
-      --site-id site_123abc \
-      --cidr "192.0.2.100/32" \
-      --name "admin-workstation" \
-      --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-    ```
-
-    <Note>For public production launches, follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) and add a `0.0.0.0/0` firewall rule to the production site when it should accept traffic from any IPv4 address.</Note>
-  </Accordion>
-
-  <Accordion icon="users" title="Add team members (optional)">
-    Invite team members to collaborate on your site.
-
-    ```bash
-    # Add an admin
-    sitectl libops create member \
-      --site-id site_123abc \
-      --email "admin@example.com" \
-      --role "owner"
-
-    # Add a developer
-    sitectl libops create member \
-      --site-id site_123abc \
-      --email "developer@example.com" \
-      --role "developer"
-    ```
-  </Accordion>
-</AccordionGroup>
-
-### Step 4: Deploy your application
-
-<AccordionGroup>
-  <Accordion icon="server" title="Configure a remote context">
-    Set up a remote context to connect to your deployment server.
-
-    ```bash
-    sitectl config set-context production \
-      --type remote \
-      --hostname collections-host.example.edu \
-      --ssh-user deploy \
-      --ssh-port 22 \
-      --ssh-key ~/.ssh/id_rsa \
-      --project-dir /var/www/app \
-      --profile production \
-      --default
-    ```
-
-    <Tip>Make sure your SSH key has access to the remote server.</Tip>
-  </Accordion>
-
-  <Accordion icon="rocket" title="Deploy with Docker Compose">
-    Deploy your application using Docker Compose commands through sitectl.
-
-    ```bash
-    # Pull latest images
-    sitectl compose pull --context production
-
-    # Start services
-    sitectl compose up --context production
-
-    # Check status
-    sitectl compose ps --context production
-
-    # View logs
-    sitectl compose logs -f --context production
-    ```
-
-    sitectl automatically:
-    - Connects to your remote server via SSH
-    - Applies the correct Docker Compose profile
-    - Injects environment files
-    - Runs commands in the correct directory
-  </Accordion>
-
-  <Accordion icon="laptop-code" title="Or set up local development">
-    Alternatively, configure a local context for development work.
-
-    ```bash
-    sitectl config set-context local \
-      --type local \
-      --project-dir ~/my-app \
-      --profile development \
-      --env-file .env.local \
-      --default
-
-    # Start local services
-    sitectl compose up
-
-    # View logs
-    sitectl compose logs -f
-
-    # Run commands in containers
-    sitectl compose exec app bash
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Complete example workflow
-
-Here's a complete example that creates everything from scratch:
-
-```bash
-# 1. Login
-sitectl libops login
-
-# 2. Create organization
-ORG_ID=$(sitectl libops create organization \
-  --name "Example Museum" \
-  --location LOCATION_US \
-  --region us-central1 \
-  --format json | jq -r '.id')
-
-echo "Organization ID: $ORG_ID"
-
-# 3. Create project
-PROJECT_ID=$(sitectl libops create project \
-  --organization-id $ORG_ID \
-  --name "Digital Collections" \
-  --region us-central1 \
-  --zone us-central1-f \
-  --machine-type e2-standard-2 \
-  --disk-size-gb 100 \
-  --format json | jq -r '.id')
-
-echo "Project ID: $PROJECT_ID"
-
-# 4. Create site
-SITE_ID=$(sitectl libops create site \
-  --project-id $PROJECT_ID \
-  --name "collections" \
-  --github-repository git@github.com:example/collections.git \
-  --github-ref heads/main \
-  --compose-path /mnt/disks/data/compose \
-  --compose-file docker-compose.yml \
-  --application-type islandora \
-  --format json | jq -r '.id')
-
-echo "Site ID: $SITE_ID"
-
-# 5. Add secrets
-sitectl libops create secret --site-id $SITE_ID --name "DATABASE_URL" --value "mysql://..."
-sitectl libops create secret --site-id $SITE_ID --name "REDIS_URL" --value "redis://..."
-sitectl libops create secret --site-id $SITE_ID --name "API_KEY" --value "sk_live_..."
-
-# 6. Add firewall rules
-sitectl libops create firewall --site-id $SITE_ID --cidr "203.0.113.0/24" --name "office" --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-sitectl libops create firewall --site-id $SITE_ID --cidr "192.0.2.0/24" --name "vpn" --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-# Add this only when the production site is ready for public IPv4 traffic
-sitectl libops create firewall --site-id $SITE_ID --cidr "0.0.0.0/0" --name "public-production-web" --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-
-# 7. Add team members
-sitectl libops create member --site-id $SITE_ID --email "admin@acme.com" --role "owner"
-sitectl libops create member --site-id $SITE_ID --email "dev@acme.com" --role "developer"
-
-# 8. Configure remote context
-sitectl config set-context production \
-  --type remote \
-  --hostname collections-host.example.edu \
-  --ssh-user deploy \
-  --ssh-key ~/.ssh/id_rsa \
-  --project-dir /var/www/collections \
-  --profile production
-
-# 9. Deploy
-sitectl compose pull --context production
-sitectl compose up --context production
-
-# 10. Check status
-sitectl compose ps --context production
-```
-
-## Next steps
-
-Now that you have your first site deployed, explore these key features:
+LibOps supports the same application templates in two operating models: run the Compose project on infrastructure you control, or use the managed platform. Start with the ownership model that matches your team; the downstream Git repository remains the reviewable source of truth in either case.
 
 <CardGroup cols={2}>
-  <Card title="Manage contexts" icon="layer-group" href="/cli/contexts">
-    Learn how to switch between local and remote environments
+  <Card title="Use the managed platform" icon="cloud" href="https://dash.libops.io">
+    Create the organization, project, and Site in the dashboard while LibOps manages the surrounding infrastructure.
   </Card>
-
-  <Card title="Secrets management" icon="key" href="/cli/secrets">
-    Master hierarchical secrets and environment variables
-  </Card>
-
-  <Card title="Port forwarding" icon="network-wired" href="/cli/port-forwarding">
-    Access remote services locally for debugging
-  </Card>
-
-  <Card title="Docker Compose" icon="docker" href="/cli/compose">
-    Explore all Docker Compose integration features
-  </Card>
-
-  <Card title="API reference" icon="code" href="/api/reference/introduction">
-    Automate your infrastructure with the REST API
-  </Card>
-
-  <Card title="Team management" icon="users" href="/cli/members">
-    Add team members and configure role-based access
+  <Card title="Run a template yourself" icon="server" href="/templates/app-support">
+    Fork a supported Compose template and operate it on a laptop, campus server, VM, or supported cloud.
   </Card>
 </CardGroup>
 
-## Common tasks
+## 1. Choose an application and owner
 
-### Access a remote database
+Choose the application that meets the service need, then name the institutional owner for content, access, upgrades, backups, and incident decisions. Review [Supported Applications](/templates/app-support) for the current application-ownership model before adding local code.
 
-```bash
-# Forward MariaDB to a local port
-sitectl port-forward 3306:mariadb:3306 --context production
+For a managed Site, sign in to the [LibOps dashboard](https://dash.libops.io). For a self-hosted Site, start with the matching downstream template and [fork ownership guide](/templates/downstream-forks).
 
-# Connect with local tools
-mysql -h 127.0.0.1 -P 3306 -u myuser -p mydb
-```
+## 2. Establish the resource boundary
 
-### Update secrets
+Managed resources are organized as:
 
-```bash
-# List current secrets
-sitectl libops list secrets --site-id $SITE_ID
+1. **Organization** — the institution-level boundary for ownership and policy.
+2. **Project** — related Sites and configuration that share an application purpose.
+3. **Site** — one runtime environment, such as production, staging, or review.
 
-# Update a secret value
-SECRET_ID=$(sitectl libops list secrets --site-id $SITE_ID --format json | \
-  jq -r '.[] | select(.Key == "API_KEY") | .ID')
+Create or select each level in the dashboard. Keep shared settings at the highest appropriate scope and use Site-level overrides only when one environment must differ. See [Resource Hierarchy](/platform/resource-hierarchy) for membership, firewall, setting, and secret inheritance.
 
-sitectl libops edit secret $SECRET_ID --site-id $SITE_ID --value "new_secret_value"
-```
+Self-hosted operators should establish the same environment boundaries in repository, DNS, credential, and backup naming even when they do not use the managed API.
 
-### Check deployment logs
+## 3. Connect the repository and runtime
 
-```bash
-# Follow all logs
-sitectl compose logs -f --context production
+The downstream repository owns application customizations, Compose configuration, and reviewed environment defaults. Do not edit a running container as a deployment mechanism.
 
-# Filter by service
-sitectl compose logs -f nginx --context production
+- **Managed platform:** connect the Site to its GitHub repository and branch, then let the platform build and deploy the reviewed revision.
+- **Self-hosted:** provision a supported runtime, persistent storage, DNS, and backups, then deploy the fork using the template contract. [cloud-compose](/infrastructure/cloud-compose) can provision supported VM-based environments.
 
-# Show last 100 lines
-sitectl compose logs --tail=100 --context production
-```
+Technical operators can add `sitectl` for consistent local and remote Compose contexts. Installation, exact command syntax, and application-plugin behavior are maintained in the [canonical sitectl documentation](https://sitectl.libops.io), not duplicated here.
+
+## 4. Configure access and prepare to publish
+
+Keep a new Site private while staff validate it. Before launch:
+
+- place passwords, keys, and tokens in the appropriate secret store rather than tracked environment files;
+- grant the narrowest organization, project, or Site role each person needs;
+- restrict administrative access and expose public web traffic only when the production Site is ready;
+- verify backups and perform an application-aware restore test;
+- review the Site in a non-production environment and merge the approved repository change;
+- follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) for DNS, firewall, email, and launch checks.
+
+## Operator references
+
+<CardGroup cols={2}>
+  <Card title="sitectl installation" icon="terminal" href="https://sitectl.libops.io/install">
+    Install or upgrade the core command and application plugins as a compatible set.
+  </Card>
+  <Card title="LibOps plugin" icon="plug" href="https://sitectl.libops.io/plugins/libops">
+    Use the maintained authentication, resource, access-control, domain, and runtime command reference.
+  </Card>
+  <Card title="Application plugins" icon="boxes-stacked" href="https://sitectl.libops.io/plugins/applications">
+    Find application-aware creation, lifecycle, migration, and maintenance behavior.
+  </Card>
+  <Card title="Self-hosted operations" icon="server" href="/infrastructure/self-hosted-operations">
+    Review host, storage, secrets, upgrades, rollback, and recovery responsibilities.
+  </Card>
+</CardGroup>
 
 <Note>
-  **Need help?** Visit our [CLI documentation](/cli/introduction) or [contact support](mailto:info@libops.io).
+Need help choosing an operating model or preparing a production launch? [Contact LibOps](mailto:info@libops.io).
 </Note>

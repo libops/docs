@@ -1,179 +1,162 @@
 ---
 title: "Engineer Guide"
-description: "Use the LibOps API, sitectl CLI, GitHub integration, and standardized Docker Compose patterns to operate sites with full visibility and control"
+description: "How technical teams work with LibOps templates, sitectl, cloud-compose, the API, and GitHub"
 ---
 
-This guide is for software engineers, systems administrators, developers, and technical partners who build and operate applications on the LibOps platform.
+This guide is for software engineers, systems administrators, developers, and technical partners who build and operate LibOps-supported applications.
 
 <Info>
-LibOps is a transparent platform, not a black box. You get Docker Compose templates, the `sitectl` CLI, `cloud-compose` Terraform modules, a full API, and GitHub review, so you keep visibility and control over every stack you operate here.
+LibOps keeps the workload inspectable. The site repository contains the Compose project and downstream code; published images, sitectl plugins, and infrastructure modules have explicit ownership boundaries.
 </Info>
 
-## Start with the template contract
+## Start with the repository contract
 
-Engineers can use LibOps-supported templates without handing the workload to the managed platform. Each template is a normal Docker Compose project with repository-owned lifecycle commands, so your team can deploy it on infrastructure you control and inspect the operational model directly.
+Each supported site begins with a normal Docker Compose repository. The tracked Compose file models the production service graph: ingress, application, database, optional search or repository services, persistent volumes, secrets, dependencies, and health checks.
 
-From there, `sitectl` is useful when you want saved local and remote contexts, plugin commands, service helpers, logs, port forwarding, and rollouts in one CLI. `cloud-compose` is the next self-hosted step when you want Terraform to provision the cloud VM, persistent volumes, and host setup while still owning the cloud account. The LibOps platform adds managed hosting, firewall rules, secrets, previews, membership, and API-backed automation around the same repository shape.
+The same repository can be operated at several levels:
 
-## Why engineers like working here
+- Docker Compose exposes the workload directly.
+- `sitectl` adds local and remote contexts, shared lifecycle, health, components, and application-aware plugins.
+- `cloud-compose` provisions supported self-hosted infrastructure around the same template.
+- The LibOps platform adds managed hosting, secrets, access control, previews, deployments, and operational automation.
 
-<CardGroup cols={3}>
-  <Card title="Consistent infra" icon="server">
-    Production runs the **exact same Docker Compose pattern** as your laptop. No environmental drift.
-  </Card>
-  <Card title="Native CI/CD" icon="github">
-    GitHub-centric workflows with an automatic **preview environment** for every branch or pull request.
-  </Card>
-  <Card title="Operator tooling" icon="terminal">
-    `sitectl` gives you app-aware plugins and remote environment management from the terminal you already use.
-  </Card>
-</CardGroup>
-
-## You stay in charge of the code
-
-LibOps keeps application code, configuration, and deployment logic in GitHub repositories. Nothing reaches production without the same review and rollout path your team uses for ordinary changes.
+Read [Architecture and Adoption Model](/platform/adoption-model) before changing a cross-layer contract.
 
 ## Engineering surfaces
 
 <CardGroup cols={2}>
+  <Card title="Application templates" icon="boxes-stacked" href="/templates/app-support">
+    Inspect the Compose, image, runtime configuration, secret, and data boundaries.
+  </Card>
+  <Card title="sitectl CLI" icon="terminal" href="https://sitectl.libops.io">
+    Operate local and remote projects through core commands and application plugins.
+  </Card>
+  <Card title="cloud-compose" icon="server" href="/infrastructure/cloud-compose">
+    Provision a supported VM runtime in your own cloud account or bootstrap an existing host.
+  </Card>
   <Card title="Platform API" icon="code" href="/api/reference/introduction">
-    Programmatically manage organizations, projects, sites, secrets, firewall rules, members, and deployments.
-  </Card>
-  <Card title="sitectl CLI" icon="terminal" href="/cli/introduction">
-    Manage local and remote Docker Compose environments, inspect logs, trigger rollouts, and use app-aware plugins.
-  </Card>
-  <Card title="cloud-compose" icon="server" href="https://cc.libops.io/">
-    Deploy supported Compose templates on Google Cloud, DigitalOcean, or Linode using the same sitectl lifecycle.
+    Manage organizations, projects, sites, secrets, firewall rules, members, and deployments.
   </Card>
   <Card title="GitHub integration" icon="github" href="/platform/github">
-    Managed or customer-owned repositories with transparent code review, preview branches, and automated deployments.
+    Use LibOps-managed or customer-owned repositories with pull requests and preview workflows.
   </Card>
-  <Card title="Application templates" icon="boxes-stacked" href="/templates/app-support">
-    Standardized Docker Compose, Make, and Renovate patterns across every supported application.
-  </Card>
-</CardGroup>
-
-## One workload, laptop to production
-
-Every LibOps-supported application follows a single operational pattern. The Docker Compose file in your repository is the **exact same workload** we run in production.
-
-<Tip>
-A consistent workload means: no environmental toil, no "works on my machine" debugging, and no need to learn a separate deployment system for each application family. An engineer can move between OJS, Islandora, Drupal, and Omeka using the same tooling.
-</Tip>
-
-### Local development you'll recognize
-
-LibOps fits into your existing engineering practices. Clone the site repo and work with your own tools. No platform-specific runtime is required.
-
-<CardGroup cols={2}>
-  <Card title="Zero-config environments" icon="docker">
-    Docker Compose is the only thing your team needs installed. Consistent setup across every workstation.
-  </Card>
-  <Card title="Test parity with CI" icon="vials">
-    The same tests CI runs are available locally via `make test`. If it passes on your machine, it passes in CI.
-  </Card>
-  <Card title="Standardized Make targets" icon="terminal">
-    Every repo includes `make build`, `make up`, `make lint`, and `make test`. Same targets, every app.
-  </Card>
-  <Card title="Operational precision" icon="sliders">
-    Use `sitectl` alongside your local tools to manage secrets, settings, and deployments without leaving the terminal.
+  <Card title="Downstream forks" icon="code-branch" href="/templates/downstream-forks">
+    Keep institutional customization reviewable and compatible with supported updates.
   </Card>
 </CardGroup>
 
-## How changes ship
+## What stays consistent
 
-LibOps keeps the path familiar for engineers: local edits, branch, pull request, preview, review, and rollout.
+The tracked workload gives environments a common shape:
+
+- service names and dependencies;
+- application Dockerfile and dependency inputs;
+- health checks and initialization gates;
+- named volume targets;
+- ingress and internal network relationships;
+- plugin-declared lifecycle and application migration order.
+
+The environment supplies different values around that shape. Production has different credentials, domains, TLS, cloud identity, disks, capacity, firewall policy, backup destinations, and monitoring.
+
+<Warning>
+Do not turn local convenience into an undeclared production dependency. Active local overrides, bind mounts, developer mail services, and host-published database ports stay out of production.
+</Warning>
+
+## Local development
+
+Start with the template's README and prerequisites. Docker Compose is the workload primitive, but some repositories also require `sitectl`, a matching application plugin, BuildKit, application package tooling, or local certificate setup for the supported workflow.
+
+The safe development loop is:
 
 <Steps>
-  <Step title="Clone and branch" icon="github">
-    Standard `git clone`, `git checkout -b`. Your existing workflow.
+  <Step title="Create a branch" icon="code-branch">
+    Keep the site fork as the source of truth for configuration and downstream code.
   </Step>
-  <Step title="Run the stack locally" icon="docker">
-    `make build && make up` runs the same Compose project used in production.
+  <Step title="Initialize the environment" icon="folder-plus">
+    Generate the template's declared secret files and first-environment artifacts.
   </Step>
-  <Step title="Edit, test, push" icon="code">
-    Make the change. `make test` runs the same suite as CI.
+  <Step title="Build and start the tracked workload" icon="docker">
+    Use the plugin-backed lifecycle or the documented Compose path for that repository.
   </Step>
-  <Step title="Open a PR" icon="code-pull-request">
-    LibOps automatically provisions a preview environment for your branch.
+  <Step title="Test the production-shaped change" icon="vials">
+    Run repository checks, validation, health checks, and application-specific verification.
   </Step>
-  <Step title="Merge to roll out" icon="rocket">
-    The standard rollout pipeline takes it from there. No special hand-off.
+  <Step title="Review the diff" icon="code-pull-request">
+    Confirm that component tools and generators changed only the files you intend to own.
   </Step>
 </Steps>
 
-<Tip>
-`sitectl` connects your local Compose context to remote sites. Use it to pull logs, manage secrets, or port-forward into production for debugging.
-</Tip>
+Local and hosted CI should share repository checks where practical, but passing locally does not guarantee CI or production success. Registry availability, architecture, cloud identity, persistent data, migration state, and provider policy can differ.
 
-## API resource hierarchy
+## How changes ship
 
-The LibOps API mirrors the platform's logical resource model.
+<Steps>
+  <Step title="Open a pull request" icon="code-pull-request">
+    Put image updates, component changes, application code, and infrastructure changes through review.
+  </Step>
+  <Step title="Exercise a preview or non-production site" icon="eye">
+    Test the running change with realistic configuration and representative data where policy permits.
+  </Step>
+  <Step title="Prepare recovery" icon="database">
+    Verify backups and the restore path before schema, storage, identity, or infrastructure changes.
+  </Step>
+  <Step title="Merge after checks pass" icon="check">
+    Keep the reviewed commit and immutable artifact references as the deployment record.
+  </Step>
+  <Step title="Deploy through the declared lifecycle" icon="rocket">
+    Run the plugin-defined rollout, honor manual migration gates, and verify runtime health.
+  </Step>
+</Steps>
 
-<CardGroup cols={2}>
-  <Card title="Organizations" icon="building-columns">
-    The institution, department, or program.
-  </Card>
-  <Card title="Projects" icon="folder-tree">
-    Related sites and applications grouped together.
-  </Card>
-  <Card title="Sites" icon="globe">
-    Individual running environments, such as production, staging, and review.
-  </Card>
-  <Card title="Resources" icon="layer-group">
-    Settings, secrets, members, firewall rules, and deployments applied at the level you choose.
-  </Card>
-</CardGroup>
+For release ordering and rollback constraints, see [Release Compatibility and Upgrades](/infrastructure/release-compatibility).
 
-The API integrates cleanly with provisioning systems, service catalogs, and automated security reviews.
+## Application and platform operations
 
-## sitectl day-to-day
+Core `sitectl` operates Compose contexts, shared services, health, validation, and deployment. The active application plugin contributes template metadata, application routes, component definitions, migrations, and app-specific helpers.
 
-Engineers reach for `sitectl` when work needs repository or terminal-level access.
+Platform resource operations are separate. The LibOps API and `sitectl-libops` integration manage hosted organizations, sites, secrets, firewall rules, and memberships. Core Compose commands do not turn a self-hosted project into a Vault- or platform-managed site.
 
-<CardGroup cols={2}>
-  <Card title="Authentication" icon="key">
-    Manage API keys and OAuth sessions.
-  </Card>
-  <Card title="Resource management" icon="sliders">
-    Configure site-level settings, secrets, and firewall rules.
-  </Card>
-  <Card title="Environment switching" icon="arrows-left-right">
-    Move between local and remote Docker Compose contexts with one flag.
-  </Card>
-  <Card title="Operational tasks" icon="terminal">
-    View remote logs, port-forward services for debugging, trigger production rollouts.
-  </Card>
-  <Card title="App-aware plugins" icon="puzzle-piece">
-    Use stack-specific commands for Drupal, OJS, Islandora, and others.
-  </Card>
-  <Card title="One workflow" icon="layer-group">
-    Same CLI, every supported application family.
-  </Card>
-</CardGroup>
+Use the sitectl documentation for current commands:
 
-## Service boundaries
+- [Contexts](https://sitectl.libops.io/context)
+- [Compose lifecycle](https://sitectl.libops.io/commands/compose)
+- [Components](https://sitectl.libops.io/components)
+- [Deployments](https://sitectl.libops.io/commands/deploy)
+- [Health checks](https://sitectl.libops.io/commands/healthcheck)
+
+## Source-of-truth rules
+
+| State | Source of truth |
+| --- | --- |
+| Application and Compose configuration | Site repository |
+| Bundled upstream application release | Versioned Buildkit image |
+| Composer application dependencies | Downstream `composer.json` and `composer.lock` |
+| Component state | The component-owned fields currently represented in project files |
+| Cloud resources | Terraform configuration and protected remote state |
+| Production credentials | Vault, provider secret service, or protected Compose secret delivery |
+| Databases and uploads | Persistent volumes or disks plus tested backups |
+
+Manual edits inside a running container, untracked production overrides, and secrets in Git are outside the supported operating model.
+
+## Service boundary
 
 <Warning>
-LibOps is in **Beta** and serves GLAM institutions, colleges, and universities in the United States and Canada. Production workloads are limited to the supported templates documented here. Running unrelated workloads on managed infrastructure is strictly prohibited and is grounds for account termination. See the [Terms of Service](https://www.libops.io/terms/) for details.
+LibOps is in **Beta** and serves GLAM institutions, colleges, and universities in the United States and Canada. Managed production workloads are limited to supported or explicitly approved templates. See the [Terms of Service](https://www.libops.io/terms/) for details.
 </Warning>
 
 ## Related documentation
 
 <CardGroup cols={2}>
-  <Card title="API & sitectl CLI" icon="terminal" href="/platform/api-cli">
-    The full philosophy + reference for integrating LibOps technically.
-  </Card>
   <Card title="Why Docker Compose" icon="docker" href="/platform/why-docker-compose">
-    The reasoning behind the platform's Compose-first design.
+    Understand the portability and single-host trade-offs.
   </Card>
-  <Card title="GitHub integration" icon="github" href="/platform/github">
-    Repository options, permissions, and collaborator sync.
+  <Card title="Self-hosted operations" icon="shield" href="/infrastructure/self-hosted-operations">
+    Plan state, IAM, secrets, backups, restore tests, and monitoring.
+  </Card>
+  <Card title="Security and operations" icon="lock" href="/platform/security-operations">
+    Compare managed defaults with self-hosted responsibilities.
   </Card>
   <Card title="Automation backplane" icon="webhook" href="/platform/automation-backplane">
-    Webhook-driven automation for CI/CD and security scanners.
-  </Card>
-  <Card title="CLI reference" icon="terminal" href="/cli/introduction">
-    Full documentation for the `sitectl` command-line tool.
+    See how the managed platform handles durable background work and GitHub events.
   </Card>
 </CardGroup>

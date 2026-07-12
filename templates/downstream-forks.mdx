@@ -1,0 +1,146 @@
+---
+title: "Maintaining a Downstream Template Fork"
+description: "How institutions customize LibOps templates without losing ownership, upgrade safety, or component compatibility"
+---
+
+Once an institution forks a LibOps template, that repository becomes the site's workload source of truth. LibOps can continue to provide image, plugin, component, and dependency updates, but it cannot safely overwrite arbitrary downstream decisions.
+
+The goal is a fork that remains understandable: local code is explicit, generated state is excluded, production changes are reviewable, and upstream improvements arrive as pull requests instead of server edits.
+
+## What belongs in the fork
+
+| Concern | Supported location |
+| --- | --- |
+| Composer application dependencies | Downstream `composer.json` and `composer.lock` |
+| Custom modules, plugins, themes, locales, or styles | The narrow paths copied by the template Dockerfile |
+| Production service graph | Tracked Compose file |
+| Supported runtime limits and timeouts | Tracked Compose environment values |
+| Optional stack features | Plugin-owned component changes committed to the repository |
+| Local bind mounts and developer services | Untracked `docker-compose.override.yml` |
+| Generated secret values | Ignored secret files or an external secret system |
+| Database, uploads, and indexes | Persistent volumes or disks, never Git |
+
+Keep the application Dockerfile small. It should make the site's ownership visible rather than rebuilding the shared runtime or copying a second upstream application.
+
+## Decide whether a change is local or reusable
+
+A fork is allowed to diverge, but a feature intended for many sites needs a bounded upstream owner.
+
+| Need | Put the change here |
+| --- | --- |
+| One institution's extension, theme, policy, or integration | Downstream fork |
+| A service or volume every new site of that application requires | Upstream Compose template |
+| A reusable runtime input or generated nginx, PHP-FPM, JVM, or application setting | Buildkit s6/confd image contract |
+| A common context, Compose, deploy, or service operation | Core `sitectl` |
+| An optional app feature that changes a known set of Compose/configuration fields | Application plugin component |
+| An app migration, route probe, scheduled task, or application-aware helper | Application plugin lifecycle or command |
+| A VM, disk, network, IAM, or host-bootstrap feature | cloud-compose provider/adapter |
+
+Prefer a plugin component for app-specific features that downstream repositories should be able to adopt later. A component needs an explicit field-ownership contract, reviewable output, validation, and tests for enable, disable, and drift repair. It must not rewrite unrelated institutional policy or pretend to merge a new upstream template release.
+
+## A safe change workflow
+
+<Steps>
+  <Step title="Branch from reviewed site state" icon="code-branch">
+    Begin with a clean checkout. If the change can affect data or schema, verify the backup and restore path first.
+  </Step>
+  <Step title="Use the declared customization surface" icon="sliders">
+    Edit downstream-owned files or use the application plugin's component model for a supported architectural choice.
+  </Step>
+  <Step title="Inspect every generated change" icon="magnifying-glass">
+    Review the Git diff. Confirm the tool touched only the Compose fields, configuration files, and custom paths expected by the component contract.
+  </Step>
+  <Step title="Test a production-shaped environment" icon="vials">
+    Run repository checks, validation, health checks, and app-specific verification. Exercise a preview or non-production site when the change affects runtime behavior.
+  </Step>
+  <Step title="Commit the desired state" icon="code-pull-request">
+    The reviewed project files, dependency locks, and immutable artifact references become the deployment record.
+  </Step>
+  <Step title="Deploy with recovery ready" icon="rocket">
+    Follow the plugin-declared rollout, honor manual migration gates, and verify the site after deployment.
+  </Step>
+</Steps>
+
+## Component-safe customization
+
+A component describes an optional capability and the project fields it owns. For example, a component may add or remove Compose services, update a Traefik route, or change related Drupal configuration.
+
+After a successful component change:
+
+- review and commit the modified project files;
+- keep unrelated local policy outside the component-owned fields;
+- run validation before deployment;
+- preserve a backup before a destructive component transition.
+
+`sitectl converge` examines the state currently represented in the project and repairs component-owned drift. It does not read a separate desired-state database, re-enable a valid disabled component, merge upstream template changes, or continuously watch the repository.
+
+Use the detailed sitectl guidance rather than copying command instructions into the site repository:
+
+- [Components](https://sitectl.libops.io/components)
+- [Set a component](https://sitectl.libops.io/commands/set)
+- [Repair component drift](https://sitectl.libops.io/commands/converge)
+- [Validate a project](https://sitectl.libops.io/commands/validate)
+
+## Development mode
+
+Development bind mounts must follow the same source-ownership boundary as the image:
+
+- mount a Composer-owned custom code path when the checkout owns that path;
+- mount an explicitly named local extension into a bundled application;
+- never hide a complete bundled plugins, modules, themes, locales, or styles directory with an empty or partial host directory;
+- do not commit the active local override;
+- do not give a coding-agent container Docker-socket or Compose-network access unless the task requires it and the operator accepts the host-level privilege.
+
+See [sitectl development components](https://sitectl.libops.io/components) for the current dev-mode and assistant options.
+
+## Receiving upstream changes
+
+Renovate can propose updates for declared dependencies, image tags and digests, and known LibOps references. It does not merge arbitrary structural changes from the upstream template.
+
+Maintain an explicit update path:
+
+1. Keep the original template as a Git remote or compare against a tagged release.
+2. Bring structural changes into a branch.
+3. Resolve the diff against local ownership rather than accepting the upstream file wholesale.
+4. Update the matching application plugin when its `CreateSpec`, component definitions, image metadata, or migration sequence changed.
+5. Test clean initialization and upgrade behavior.
+6. Merge only after CI and the production-shaped checks pass.
+
+New application features intended for many downstream forks should be modeled as plugin components when they have a bounded, reviewable file contract. One-off institutional code stays in the fork.
+
+Record the compatibility set in the update pull request: base-image tag and digest, template source commit, core sitectl version, application and included-plugin versions, and infrastructure ref when it changes. A core release number is not a substitute for each plugin's independently published version. Do not merge a reference that has not been published and proven by its hosted CI.
+
+## Preserve migration gates
+
+A downstream rollout must keep plugin-declared migration failures visible. For Omeka S and Omeka Classic, an `ACTION REQUIRED` result means the application-only dependency set may be running while public Traefik remains stopped. Complete the web-admin upgrade through loopback-only `sitectl port-forward`, then resume `sitectl deploy --skip-git --no-pull` with the same context and checked-out commit.
+
+Do not replace that gate with an unconditional `docker compose up`, mark the partial start successful, or let infrastructure automation switch to a newer ref before the operator resumes. The final full-stack start, healthcheck, and application/extension smoke checks are the completion boundary.
+
+## Image testing without losing the build contract
+
+The template Dockerfile keeps its `BASE_IMAGE` build argument so a branch can test a different application or runtime image. Core `sitectl` can also apply reviewed image or build-argument overrides for a context.
+
+Use overrides for testing. Commit the intended production version and rebuild the downstream image before deployment. The current command behavior is documented under [Image overrides](https://sitectl.libops.io/commands/image).
+
+## Unsupported patterns
+
+| Pattern | Why it breaks the contract |
+| --- | --- |
+| Editing files in a running container | The next render, restart, or replacement removes the change |
+| Copying a full app tree over a bundled image | The image and fork compete to own the application |
+| Moving Composer locks into Buildkit | Published runtime and downstream dependencies diverge |
+| Mounting a broad extension directory over bundled content | Upstream extensions disappear at runtime |
+| Giving the application the database root password | A long-running public service gains unnecessary administrative access |
+| Depending on a committed local override in production | The tracked workload no longer describes the running site |
+| Using an unpinned `latest`, `main`, image, repository, or module reference | Rebuilds and applies can change without a reviewed diff; an image digest or full commit supplies the immutable identity |
+| Treating `converge` as an upgrade controller | It repairs declared component drift; it does not merge releases or run forever |
+| Storing databases, uploads, secrets, or Terraform state in Git | Sensitive or mutable state becomes inseparable from application code |
+
+<CardGroup cols={2}>
+  <Card title="Application contract" icon="boxes-stacked" href="/templates/app-support">
+    Revisit image ownership, runtime configuration, secrets, and persistent data.
+  </Card>
+  <Card title="Release compatibility" icon="arrows-rotate" href="/infrastructure/release-compatibility">
+    Adopt image, plugin, template, and infrastructure updates in dependency order.
+  </Card>
+</CardGroup>

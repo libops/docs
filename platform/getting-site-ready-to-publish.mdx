@@ -17,25 +17,7 @@ Use this checklist when moving a production site from private review to public a
 
 ## Open Production Access
 
-For a public production site, add a site-level rule that allows any IPv4 address:
-
-```bash
-sitectl libops create firewall \
-  --site-id <production-site-id> \
-  --cidr "0.0.0.0/0" \
-  --name "public-production-web" \
-  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-```
-
-If the production hostname should also accept IPv6 clients, add:
-
-```bash
-sitectl libops create firewall \
-  --site-id <production-site-id> \
-  --cidr "::/0" \
-  --name "public-production-ipv6" \
-  --type FIREWALL_RULE_TYPE_HTTPS_ALLOWED
-```
+For a public production site, add a site-level HTTPS rule for `0.0.0.0/0`. Add `::/0` only when the production hostname should also accept IPv6 clients. Technical operators can use the current commands in the [sitectl access-control reference](https://sitectl.libops.io/plugins/libops/access-controls); the exact CLI surface is maintained there rather than duplicated in this launch checklist.
 
 <Warning>
 Only add public CIDR rules to production sites that are ready to be public. Keep development, staging, preview, and administrative-only sites limited to office, VPN, or known operator IP ranges.
@@ -54,8 +36,8 @@ In the dashboard:
 
 ## Final Checks
 
-- `sitectl libops list domains --site-id <production-site-id>` shows the expected hostname.
+- LibOps shows the expected domain on the production site.
 - Public DNS resolves the hostname to `customers.libops.site`.
-- `sitectl libops list firewall --site-id <production-site-id>` includes `0.0.0.0/0` for public IPv4 traffic.
+- The production site's firewall rules include `0.0.0.0/0` for public IPv4 traffic.
 - The site loads from an IP address that is not on your office or VPN allowlist.
 - Application-level settings, such as canonical URL or trusted host configuration, use the public hostname.

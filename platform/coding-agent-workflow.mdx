@@ -19,13 +19,7 @@ The supported models run inside your organization's infrastructure on the LibOps
 
 Contact [LibOps](https://www.libops.io/contact/) if your organization wants to integrate with Anthropic, OpenAI, or another model provider.
 
-For site coding tasks, the runner prepares the checked-out repository with sitectl before the harness starts:
-
-```bash
-sitectl set dev-mode enabled --assistant --harness codex --compose-access --yolo
-```
-
-That step writes the application plugin's editable-code mounts and a profiled `cli-sandbox` service into `docker-compose.override.yml`. The agent then works against the same development surface that engineers use locally, including app-specific paths such as Drupal modules and themes, WordPress plugins and themes, OJS plugins, and Omeka modules or themes.
+For site coding tasks, the runner requests the application plugin's assistant development mode before the harness starts. Drupal, WordPress, and ISLE currently declare safe downstream-owned mount lists and a profiled `cli-sandbox` service in `docker-compose.override.yml`. Bundled applications such as OJS, Omeka, and ArchivesSpace do not expose broad development mounts because those mounts could hide extensions supplied by the versioned image; their changes stay in explicit tracked extension paths and are tested through a rebuilt downstream image. Current component options and command syntax live in the [sitectl component documentation](https://sitectl.libops.io/components).
 
 ## Why use the LibOps Task Agent?
 
@@ -186,7 +180,7 @@ The Task Agent is useful when stakeholders need a reviewable change but do not n
         Work in your institution's GitHub organization or a local checkout.
       </Step>
       <Step title="Standard local workflow" icon="docker">
-        Every LibOps project includes a `Makefile` with `build`, `up`, `lint`, and `test` targets. Docker Compose is the only prerequisite.
+        Follow the template README and matching sitectl plugin. The tracked Compose workload stays consistent, while initialization, tests, and application tooling can differ by template.
       </Step>
       <Step title="Branch and pull request" icon="code-branch">
         Use the same Git-based workflow as the agent: create a branch, push changes, and open a PR.
@@ -195,7 +189,7 @@ The Task Agent is useful when stakeholders need a reviewable change but do not n
         Opening a PR provisions a preview environment for your branch, exactly like the agent path.
       </Step>
       <Step title="Operate with sitectl" icon="terminal">
-        Manage site operations, secrets, and deployments from your local terminal.
+        Operate local or remote Compose contexts with sitectl, and use the LibOps platform integration for managed secrets and deployments.
       </Step>
     </Steps>
   </Tab>

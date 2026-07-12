@@ -1,108 +1,186 @@
 ---
-title: "Adoption Model"
-description: "How LibOps templates, sitectl, cloud-compose, and the managed platform fit together"
+title: "Architecture and Adoption Model"
+description: "How Buildkit images, Compose templates, sitectl, cloud-compose, and the managed platform divide responsibility"
 ---
 
-LibOps is built as four adoption layers. Each layer is useful on its own, and each layer keeps the same repository-backed application contract.
+LibOps uses one repository-backed application contract from a self-hosted Compose project through the managed platform. The layers add capability without creating a second application tree or a platform-only deployment path.
+
+This page is the ownership map. It explains where a change belongs before you edit an image, template, plugin, or infrastructure module.
+
+<Info>
+This map defines boundaries, not artifact availability. Before consuming a tag, digest, package, module path, or control-plane integration, verify the complete released set in [Release Compatibility and Upgrades](/infrastructure/release-compatibility).
+</Info>
+
+## The architecture
+
+```text
+Upstream application release or shared runtime
+                         |
+                         v
+                 Buildkit image
+                         |
+                         v
+              Compose template fork  <----  application plugin
+                         |                       ^
+                         +---- core sitectl -----+
+                         |
+              +----------+-----------+
+              |                      |
+              v                      v
+        cloud-compose          LibOps platform
+        in your account        managed service
+                                      |
+                          API + durable control plane
+                                      |
+                          pinned infrastructure contract
+```
+
+Buildkit is a foundation, not an adoption tier. A team may operate the Compose template directly, add `sitectl`, provision a host with `cloud-compose`, or use the managed platform.
 
 <CardGroup cols={4}>
-  <Card title="Compose templates" icon="docker">
-    Application repositories that run with Docker Compose. They own local customization, app-specific Dockerfiles, init behavior, rollout scripts, and Renovate configuration.
+  <Card title="Compose template" icon="docker">
+    The self-hostable workload: services, networks, volumes, secrets, health checks, image references, and the site's tracked customization.
   </Card>
   <Card title="sitectl" icon="terminal">
-    The operator layer for those repositories. It adds saved contexts, app plugins, health checks, ingress management, dev-mode, and repeatable lifecycle commands.
+    The operator layer: contexts, shared Compose lifecycle, health checks, service operations, and application-aware plugins.
   </Card>
   <Card title="cloud-compose" icon="server">
-    The self-hosted cloud layer. It combines the same templates and sitectl lifecycle with Terraform-managed VMs, persistent volumes, and host setup on supported clouds.
+    The self-hosted infrastructure layer: Terraform-managed hosts and provider resources, or bootstrap onto an existing host with Ansible or Salt.
   </Card>
   <Card title="LibOps platform" icon="cloud">
-    Managed hosting and collaboration on top of the same repositories: secrets, membership, firewall rules, previews, CDN, deployments, and operational automation.
+    Managed hosting, Vault-backed secrets, membership, firewall policy, previews, deployments, and operational automation around the same repository.
   </Card>
 </CardGroup>
 
-The boundary between layers matters. Compose templates should remain understandable without the platform. `sitectl` should make the same templates easier to operate locally or remotely. `cloud-compose` should provision reusable cloud infrastructure without creating a separate app lifecycle. The platform should orchestrate the same lifecycle instead of hiding a separate deployment path.
+## One owner for each concern
 
-## Buildkit Contract
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| Buildkit | Shared runtimes; verified bundled application releases; s6-overlay service graphs; confd templates; image health checks | Customer code, site data, cloud resources, or a competing Composer application tree |
+| Compose template | The production-shaped service graph; direct image pins; persistent volumes; Compose secrets; site Dockerfile; tracked local extensions and settings | Host provisioning, generic CLI behavior, or generated nginx and PHP-FPM configuration |
+| Core `sitectl` | Contexts; common Compose lifecycle; deploy orchestration; runtime health; image overrides; shared service commands | Application migrations, application-specific routes, or copies of the template |
+| Application plugin | Template checkout metadata; init artifacts and volumes; rollout ordering; application health and routes; component definitions; safe development mounts; app-specific helpers | Generic MariaDB, Solr, Traefik, or Compose wrappers that belong in core |
+| `cloud-compose` | VM, network, firewall, disk, identity, and host prerequisites; repository checkout and context bootstrap | Application configuration, application migrations, or customer secret values |
+| LibOps API and control plane | Desired platform resources; authorization; durable operations and events; Terraform state boundaries; controller delivery; deployment status and audit records | A second application source tree, application migration logic, or mutable production-only Compose overrides |
+| Downstream operator | Cloud account, IAM, DNS, Terraform backend, secret delivery, data retention, restore testing, monitoring, and the site's fork | Changes to a running container that are not represented in Git or another declared state store |
 
-Reusable application behavior belongs in `libops/buildkit`.
+<Info>
+If the same behavior must be copied into several templates or plugins, its owner is probably wrong. Shared runtime behavior belongs in Buildkit; shared operations belong in core `sitectl`; application-specific behavior belongs in the application plugin or template.
+</Info>
 
-Buildkit images provide the shared runtime contract:
+## Where a change belongs
 
-- s6-overlay owns service supervision.
-- confd renders runtime configuration from environment and secrets.
-- Images are tagged with the underlying application or runtime version they ship.
-- Universal runtime behavior belongs in the image rather than being copied into every template.
-- Image tests live beside the image and prove the application can install, start, and answer basic health checks.
+Use the narrowest owner that can express and test the change once.
 
-Templates build from those images when they need site-level customization. For example, a template can add a Drupal module, WordPress plugin, OJS plugin, Omeka theme, or ArchivesSpace customization without replacing the base runtime contract.
+| Change | Owner |
+| --- | --- |
+| Add a reusable nginx, PHP-FPM, JVM, or application setting rendered from supported input | Buildkit s6/confd runtime |
+| Change services, dependencies, health checks, volumes, secrets, or the downstream build context | Compose template |
+| Add a context, common Compose operation, deployment primitive, or shared service command | Core `sitectl` |
+| Add an application migration, route check, bounded optional feature, or app-aware command | Application plugin; use a component when it owns a reviewable set of project fields |
+| Add one institution's theme, plugin, module, configuration, or policy | Downstream template fork |
+| Add a VM, disk, network, firewall, identity, provider, or host-bootstrap capability | `cloud-compose` or the provider-specific adapter |
+| Add managed desired state, authorization, durable scheduling, or reconciliation status | LibOps API and control plane |
 
-## Template Contract
+Do not solve a missing image input by copying generated configuration into every template. Do not solve a missing application lifecycle step in Terraform. Do not place institution-specific code in a shared image merely to avoid maintaining the downstream fork.
 
-Compose templates are the self-hostable contract. They should define:
+## Application source ownership
 
-- `docker-compose.yaml` for the production-shaped service graph.
-- `docker-compose.override-example.yaml` for local-only bind mounts.
-- `Makefile` targets for init, build, up, down, test, and rollout.
-- `scripts/rollout.sh` for app-specific deployment sequencing.
-- `renovate.json5` for dependency and image updates.
-- App-level Dockerfiles only where the template needs checked-in local code or dependencies.
+LibOps supports two application-image models. They must not be combined.
 
-The template owns the customer-facing customization surface. Secrets and generated runtime configuration should flow through environment variables and confd-backed files, not through repeated app-load logic or undocumented manual edits.
+- OJS, Omeka S, Omeka Classic, and ArchivesSpace are bundled applications. Buildkit downloads and verifies the upstream release, installs it in the published image, and tags the image from the application version. The template adds only explicit downstream extensions and configuration.
+- Drupal, Islandora, and WordPress are Composer-owned applications. Buildkit supplies the runtime and setup behavior. The downstream template owns `composer.json`, `composer.lock`, the application tree, and local code.
 
-## sitectl Contract
+Putting a second application tree over either model creates ambiguous ownership and unreliable upgrades. See [Application Image and Template Contract](/templates/app-support) for the detailed boundary.
 
-`sitectl` operates the template without replacing it.
+## Configuration and data flow
 
-Core sitectl provides context management, remote Docker access, Compose helpers, package prerequisites, ingress components, QA scripts, dependency bumping, and shared lifecycle plumbing.
+The repository holds desired workload state. It does not hold production data or plaintext secrets.
 
-App plugins provide the app-aware layer:
+1. The template supplies supported environment values and mounts Compose secrets.
+2. Buildkit's startup graph reads those inputs. confd renders nginx, PHP-FPM, and application configuration; s6-overlay orders setup and long-running services.
+3. One-shot initialization creates generated secrets and scoped database users before the application starts.
+4. Persistent application data lives in named volumes or provider disks, outside the image and Git checkout.
+5. Terraform state records infrastructure state. It belongs in a protected remote backend and must be treated as sensitive.
 
-- create metadata for template checkout, init artifacts, and default commands;
-- health checks that understand the application route and backing services;
-- ingress update hooks for app-specific host, scheme, and trusted-proxy configuration;
-- dev-mode mount lists, including the code paths mounted into `cli-sandbox` when assistant mode is enabled;
-- rollout and inspection helpers that are specific to the app.
+The same tracked Compose service graph can run locally and on a production VM, but the environments are not identical. Domains, credentials, ingress, storage, host capacity, cloud identity, and backup policy remain environment-specific and must be tested.
 
-The app plugin should delegate universal behavior to core sitectl components. If every app needs the same behavior, it belongs in core sitectl or buildkit, not in seven plugin implementations.
+## Lifecycle boundary
 
-## cloud-compose Contract
+The template remains an understandable Docker Compose project. The application plugin publishes a `CreateSpec` describing build, initialization, start, stop, image, and rollout metadata. Core `sitectl` executes that contract and adds common preflight and health behavior.
 
-`cloud-compose` deploys the same repository and sitectl contract onto cloud infrastructure.
+`cloud-compose` and the managed platform call the same lifecycle. Terraform should not contain application upgrade commands, and an application plugin should not create cloud networks or disks.
 
-It provides the reusable self-hosted cloud layer:
+Component changes follow the same rule. A plugin updates only the files and fields declared by its component contract. Operators review the resulting diff and commit it to the downstream fork. `sitectl converge` repairs detected component drift; it is not a persistent desired-state controller and does not merge new upstream template features automatically.
 
-- Terraform modules for supported cloud providers;
-- virtual machine provisioning and host bootstrap;
-- persistent data and Docker-volume storage;
-- OS-family dependency installation for Docker, Compose, BuildKit, and sitectl;
-- sitectl context creation on the VM;
-- lifecycle systemd units and timers, including health checks and MariaDB backups;
-- first-class template presets for supported LibOps applications.
+## Managed control-plane flow
 
-`cloud-compose` should not encode application-specific rollout logic. It should prepare the host, clone the repository, configure sitectl, and run the same lifecycle commands the template and plugin declare.
+The managed platform adds durable orchestration around the same repository and plugin contract:
 
-## Platform Contract
+```text
+Dashboard, API, or deployment event
+                 |
+                 v
+        authorized desired state
+                 |
+        database transaction + event
+                 |
+                 v
+       Terraform runner or controller
+          |                    |
+          v                    v
+  cloud/provider state    site lifecycle on VM
+                               |
+                               v
+                   tracked Compose repository
+```
 
-The LibOps platform coordinates the same lifecycle at managed scale. It adds:
+The API owns organization, project, runtime, site, secret-reference, firewall, membership, and operation records. Durable workers and Terraform runner jobs reconcile those records into separately owned infrastructure states. The managed control plane pins or vendors a reviewed cloud-compose contract; it does not follow an unreviewed cloud-compose branch or duplicate application migrations in Terraform.
 
-- repository checkout and deployment orchestration;
-- Vault-backed secrets;
-- membership and access control;
-- firewall and domain management;
-- CDN and edge routing;
-- preview environments;
-- task-agent workflows;
-- rollout automation and operational monitoring.
+Managed Terraform keeps long-lived ownership narrow:
 
-The platform should call into sitectl and the repository's declared entrypoints. It should not create a second, platform-only way to initialize, update, or run an application.
+| State | Owner |
+| --- | --- |
+| Foundation | Customer folder, organization project, protected state bucket, and Terraform runner identity/job |
+| Organization | Shared organization network and services, Vault runtime, events, and model integrations |
+| Vault configuration | Mounts, policies, and workload-auth configuration |
+| Project | One customer project plus its complete runtime and site infrastructure inventory |
+| Edge | Public hostname and edge-routing resources |
 
-## Choosing a Layer
+Creation follows foundation, organization, Vault configuration, project, then edge; deletion reverses that order. A site does not receive an independent Terraform state, and one state must not manage a resource owned by another root.
 
-Start with the lowest layer that solves the problem:
+Controller delivery is private network traffic but still authenticated. A Cloud Run controller can send to a VM through Direct VPC **egress**. A site-facing Cloud Run power proxy uses the same egress pattern to reach the VM's private application port. Cloud Run services do not gain Direct VPC ingress from this configuration: public traffic still enters the declared Cloud Run/edge ingress, and VPC firewall rules govern the egress hop to the VM.
 
-- Use Compose templates when you want a clear, self-hosted application repository.
-- Add `sitectl` when you need repeatable operations across local and remote environments.
-- Add `cloud-compose` when you want Terraform-managed cloud infrastructure while keeping the app self-hosted in your own account.
-- Use the LibOps platform when you want managed infrastructure, collaboration, secrets, CDN, previews, and deployments handled for you.
+Direct VPC addresses are ephemeral. The VM ingress rule therefore allows the complete selected subnet CIDR on only the required port and targets the runtime service account. The project foundation owns the Cloud Run service identity, required network-use role, and reusable custom-role definitions; per-runtime state owns the instance-scoped role bindings and firewall rule. The Cloud Run service, subnet, and VM must use compatible regions, the subnet needs adequate address capacity, and the default MTU remains `1460`.
 
-You can move up the stack without rebuilding the site around a new operational model.
+Ordinary Direct VPC services should use an egress-aware startup probe with a bounded retry window. The power proxy is the deliberate exception: the application VM may be off, so application reachability cannot be its startup gate. Its bounded first-request power-on and backend dial loop is the readiness boundary. Clients must still tolerate occasional connection resets during Cloud Run or network maintenance.
+
+## Responsibility changes by adoption layer
+
+| Capability | Compose only | Compose + sitectl | cloud-compose | Managed platform |
+| --- | --- | --- | --- | --- |
+| Workload repository | Institution | Institution | Institution | Institution or LibOps-managed repository |
+| Application lifecycle | Institution | Institution through sitectl | Institution through sitectl | LibOps orchestration through the same contract |
+| Host and cloud resources | Institution | Institution | Terraform caller | LibOps |
+| Terraform state | Institution, if used | Institution, if used | Institution | LibOps |
+| Secrets and IAM | Institution | Institution | Institution | LibOps-managed platform resources |
+| Backups and restore testing | Institution | Institution | Institution | LibOps service policy |
+
+Start with the lowest layer that solves the operational problem. Moving up the stack should add management around the workload, not require rebuilding the application around a different deployment system.
+
+## Continue reading
+
+<CardGroup cols={2}>
+  <Card title="Application contract" icon="boxes-stacked" href="/templates/app-support">
+    Understand bundled and Composer-owned images, runtime configuration, initialization, and health.
+  </Card>
+  <Card title="Downstream forks" icon="code-branch" href="/templates/downstream-forks">
+    Keep local customization reviewable and compatible with component-driven updates.
+  </Card>
+  <Card title="cloud-compose" icon="server" href="/infrastructure/cloud-compose">
+    See the Terraform, provider, and existing-host boundaries.
+  </Card>
+  <Card title="Self-hosted operations" icon="shield" href="/infrastructure/self-hosted-operations">
+    Plan state, secrets, backups, restore testing, and production ownership.
+  </Card>
+</CardGroup>

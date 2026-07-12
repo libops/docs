@@ -49,31 +49,9 @@ TTL:   300 or provider default
 
 If the domain is hosted in another Cloudflare zone, create the CNAME as **DNS only**, not proxied.
 
-## Add a domain with sitectl
+## Manage a domain with sitectl
 
-The `sitectl` command surface for custom domains is:
-
-```bash
-sitectl libops create domain \
-  --site-id <site-id> \
-  --domain collections.example.edu
-```
-
-List domains on the site:
-
-```bash
-sitectl libops list domains --site-id <site-id>
-```
-
-Remove a domain from the site:
-
-```bash
-sitectl libops delete domain \
-  --site-id <site-id> \
-  collections.example.edu
-```
-
-The command returns the domain status and router target recorded by LibOps.
+Technical operators can create, inspect, and remove the same domain resources through the `sitectl-libops` plugin. Current flags and output behavior live in the [sitectl domains reference](https://sitectl.libops.io/plugins/libops/domains).
 
 ## Check Routing
 

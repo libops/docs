@@ -1,38 +1,8 @@
 ---
-title: 'API Keys'
-description: 'Create, list, save, and revoke LibOps API keys'
+title: 'LibOps API keys in sitectl'
+description: 'Find the maintained LibOps authentication reference'
 ---
 
-API keys provide sustained access after an OAuth login. The CLI checks `~/.sitectl/key` before using OAuth tokens.
+This legacy route is retained for existing links. Current API-key creation, storage, scopes, and revocation behavior is documented in the [sitectl LibOps authentication reference](https://sitectl.libops.io/plugins/libops/authentication).
 
-## Create
-
-```bash
-sitectl libops create apikey --name workstation --save
-sitectl libops create apikey \
-  --name ci-deploy \
-  --description "GitHub Actions deploy key" \
-  --scopes organization:read,project:write,site:write
-```
-
-`--save` stores the returned secret in `~/.sitectl/key`.
-
-<Warning>
-The API key secret is only shown once. Save it immediately or create a replacement key.
-</Warning>
-
-## List
-
-```bash
-sitectl libops list apikeys
-sitectl libops list apikeys --format json
-```
-
-## Revoke
-
-```bash
-sitectl libops delete apikey "$API_KEY_ID"
-sitectl libops delete apikey "$API_KEY_ID" --yes
-```
-
-Use scopes in `resource:level` form, for example `organization:read`, `project:write`, or `site:admin`.
+For API integration boundaries, see [API and sitectl](/platform/api-cli).

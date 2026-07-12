@@ -1,0 +1,318 @@
+---
+title: "cloud-compose Deployment Boundary"
+description: "How cloud-compose provisions supported hosts without taking ownership of application configuration or lifecycle"
+---
+
+`cloud-compose` is the self-hosted infrastructure layer for LibOps Compose templates. It provisions supported cloud resources, prepares a host, checks out the site repository, installs `sitectl` and the selected plugins, creates a context, and invokes the declared application lifecycle.
+
+It does not turn Terraform into an application package manager.
+
+<Info>
+Use the [cloud-compose reference documentation](https://cc.libops.io/) for the exact variables and outputs of the release you select. This page defines the architectural and operational boundaries downstream consumers must preserve.
+</Info>
+
+<Warning>
+This page is an architecture contract, not a release announcement. Examples use `RELEASE_OR_FULL_SHA` deliberately. Do not configure a provider entrypoint, foundation module, package-version map, or Direct VPC option until the exact cloud-compose tag or commit you selected contains it and its release CI is green.
+</Warning>
+
+## Deployment flow
+
+```text
+Terraform provider module
+        |
+        +-- VM, network, firewall, disks, identity
+        |
+        v
+Host bootstrap
+        |
+        +-- Docker, Compose, Buildx, sitectl packages
+        +-- repository checkout and sitectl context
+        |
+        v
+Application plugin lifecycle
+        |
+        v
+Tracked Compose workload
+```
+
+Terraform owns durable infrastructure. The template and application plugin own initialization, build, application migrations, start, health, and rollout ordering.
+
+## Ownership boundary
+
+| cloud-compose owns | Template, sitectl, or operator owns |
+| --- | --- |
+| Provider resources and host prerequisites | Compose services and application configuration |
+| Persistent disk attachment and mount points | Database schema and application data |
+| Network and firewall resources exposed by the selected module | Domain policy, public DNS, and application-aware ingress settings |
+| Installing reviewed host packages and sitectl packages | Package compatibility and plugin-declared lifecycle |
+| Repository checkout and context bootstrap | Downstream repository changes and component state |
+| Optional provider integrations exposed by the module | Vault roles and policies, secret values, backup retention, and restore testing |
+| Terraform outputs | Protected remote state, caller credentials, and access policy |
+
+Application-specific secret names, migrations, database setup, and service ordering belong in the template or plugin. Adding them to Terraform would create a second application lifecycle that local operators and downstream forks cannot reproduce.
+
+## Choose a provider-specific entrypoint
+
+Prefer the module for the provider the caller already selected:
+
+| Entry point | Modular source pattern | Infrastructure boundary | Identity and secrets |
+| --- | --- | --- | --- |
+| Google Cloud | `github.com/libops/cloud-compose//providers/gcp?ref=RELEASE_OR_FULL_SHA` | Compute, network, firewall, persistent disks, service accounts, and optional GCP integrations | Can use a consumer-configured Vault GCP IAM role; the operator owns the role, policy, and secret paths |
+| DigitalOcean | `github.com/libops/cloud-compose//providers/do?ref=RELEASE_OR_FULL_SHA` | Droplet, network/firewall inputs, and persistent volumes exposed by the module | Consumer-managed provider token and secret authentication |
+| Linode | `github.com/libops/cloud-compose//providers/linode?ref=RELEASE_OR_FULL_SHA` | Instance, firewall inputs, and persistent volumes exposed by the module | Consumer-managed provider token and secret authentication |
+| Ansible | `ansible/` role from the pinned release | Bootstrap files and packages on an existing Debian or Ubuntu host | The existing-host owner supplies OS access, secrets, network, DNS, firewall, and storage |
+| Salt | `salt/` formula from the pinned release | Bootstrap files and packages on an existing Debian or Ubuntu host | The existing-host owner supplies OS access, secrets, network, DNS, firewall, and storage |
+
+Pin the source to the reviewed release or a full commit. The compatibility dispatcher at the repository root remains available, but a new caller should use one provider entrypoint so Terraform does not load unrelated providers. Do not source production infrastructure from a moving branch.
+
+Provider entrypoints should normalize the same runtime object before calling provider-specific resources. A template preset supplies repository, plugin, and package defaults only; an explicit caller value wins. Shared host behavior belongs in provider-neutral runtime modules so Google Cloud, DigitalOcean, Linode, Ansible, and Salt do not grow independent application lifecycles. Each adapter must reject an input it cannot support rather than silently ignore it.
+
+Changing an existing deployment from the root dispatcher to a provider module changes module addresses even when the real infrastructure is identical. Preserve the addresses with release-provided `moved` blocks or an explicit, reviewed state migration. Do not let Terraform destroy and recreate a data-bearing host to make the module path look cleaner.
+
+## Pin the complete runtime contract
+
+A module ref alone does not make a deployment reproducible. Record and pin:
+
+- the cloud-compose release or full commit and the caller's provider lockfile;
+- each installed core and plugin package through `runtime.sitectl.package_versions` when the selected release exposes that map;
+- each Compose repository with a full 40-character commit for production;
+- every direct container image with an immutable digest;
+- a rootfs archive URL and its SHA-256 as a pair, when archive mode is used;
+- the rollout binary URL and SHA-256, when the rollout service is enabled;
+- any production power-management frontend image by digest.
+
+Core `sitectl` and its plugins have independent releases. In releases with per-package pins, `runtime.sitectl.version` is only the legacy fallback for packages without a package-specific value, and `latest` remains mutable. A release with only one shared version cannot represent an independently released plugin set. On a host with several projects, all projects share one installed package set, so select a set compatible with every application plugin on that host.
+
+A branch or tag in `runtime.compose` intentionally follows future repository changes. A full commit is detached and verified before deployment, and cloud-compose records the deployed head for later comparison. A commit identifies repository bytes; downstream branch protection and commit-signing policy still determine whether those bytes were trusted.
+
+## Host-control trust boundary
+
+Do not treat cloud-compose inputs as sandboxed application content. The selected Compose repository and lifecycle command arrays, sitectl and plugin binaries, rootfs overlays and archives, Vault Agent templates and commands, and managed artifacts can all influence host execution. The lifecycle account has Docker access, and Terraform-provisioned hosts also grant it passwordless `sudo`; either capability makes reviewed code in those surfaces effectively root-equivalent.
+
+Grant write access to a production Compose repository only to identities trusted to control its host. Review lifecycle metadata and rootfs changes with the same care as Terraform or privileged systemd changes. A checksum protects artifact integrity after selection; it does not establish that the source or its author is trustworthy.
+
+## Google Cloud prerequisites
+
+Before planning a GCP deployment, the caller must provide or approve:
+
+- a billing-enabled project ID; modular releases derive and verify the numeric
+  project number, while an older release may still require the value documented
+  by that exact tag;
+- credentials for a Terraform identity with only the permissions required by the selected features;
+- the Google APIs required for Compute Engine, IAM, networking, disks, and any optional Artifact Registry, snapshot, Cloud Run, or power-management resources;
+- a network and subnet decision, including restricted SSH source ranges;
+- VM and application service-account decisions;
+- public DNS and certificate ownership;
+- a protected remote Terraform backend.
+
+Review the plan for service-account creation, IAM bindings, public IPs, firewall sources, disk replacement, and resource deletion.
+
+<Warning>
+GCP power management is an optional feature with additional IAM, custom-role, Cloud Run, network, and ingress prerequisites. It also implies the privileged internal-services runtime. Keep it disabled until those prerequisites and privileges are deliberately provisioned and reviewed.
+</Warning>
+
+The infrastructure identity and application identity should be separate. Prefer attached workload identity and short-lived tokens. Avoid persistent service-account keys; when a selected integration still requires one, scope it narrowly, rotate it, and document its removal path.
+
+When the selected release includes `modules/gcp-foundation`, apply that
+singleton state before application stacks. It enables the required APIs,
+materializes the Cloud Run service identity, preserves its service-agent role,
+owns the reusable power-role definitions, and, for Shared VPC, grants Network
+Viewer in the host project and Network User on each explicitly declared
+regional subnet. The application stack consumes those role names and owns only
+its deployment-specific identities, instance-scoped role bindings, and
+firewall rule. Keeping long-lived project and subnet grants outside per-site
+state avoids multiple stacks competing for the same IAM memberships.
+
+If the selected release does not contain that foundation module, follow its
+release-specific IAM instructions. Do not copy an unpublished foundation
+module from a development branch into an otherwise pinned production stack.
+
+The optional Cloud Run power-management ingress reaches the VM's private
+application port through [Direct VPC
+egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc); it does
+not create a Serverless VPC Access connector. Cloud-compose resolves one
+regional subnet for both the VM and Cloud Run revision. An existing deployment
+may specify the network, the subnet, or both: a network alone selects the
+same-named subnet, and a subnet alone supplies its parent network. Shared VPC
+callers must identify the host project in the foundation state. The foundation
+Terraform identity needs authority to manage host-project and subnet IAM; the
+application Terraform identity needs authority to inspect the selected network
+and manage its per-stack firewall rule.
+
+The word "ingress" here describes the proxy's application role, not a Direct
+VPC ingress feature. Cloud Run services do not support Direct VPC ingress.
+Public requests enter Cloud Run through its configured service/edge ingress;
+Direct VPC egress is only the private hop from that service to the VM.
+
+When power management is enabled, the subnet must be IPv4 `/26` or larger, use
+RFC1918, RFC6598 (`100.64.0.0/10`), or Class E (`240.0.0.0/4`) space, and keep
+the Cloud Run default MTU of `1460`. Cloud Run receives ephemeral addresses
+from that subnet. In a same-project VPC, the preserved Cloud Run service-agent
+role supplies the required permissions; in Shared VPC, the foundation also
+grants Network Viewer in the host project and subnet-scoped Network User. The
+application state allows the whole subnet CIDR—rather than individual revision
+addresses or identities—to reach only the selected application port on the VM.
+
+For an existing or Shared VPC, `gcp.network.mtu` is a caller attestation because
+the Terraform network data source does not expose MTU. Confirm the real network
+value and leave the input at `1460`; managed networks set it explicitly.
+
+That firewall source makes the complete subnet a trust zone: any VM or
+serverless workload allocated there can reach the selected VM port. Prefer a
+dedicated subnet, especially in Shared VPC, or share it only with workloads in
+the same trust boundary. Leave free capacity for `/28` allocation blocks,
+roughly two addresses per running service instance, and overlapping revision
+retention; an already occupied `/26` is not sufficient.
+
+A release that provides power management must declare bounded power-on, TCP
+connection, and Cloud Run request budgets. Check the selected release for the
+tested values. The proxy adds no application-level request or response-status
+retry after a connection succeeds; Go may still retry requests it classifies
+as replayable when a pooled connection is found stale. Operators and clients
+must still tolerate occasional connection resets during network maintenance.
+
+In releases that expose the hardened power-management contract, enabling it
+requires explicit original-client CIDRs in
+`gcp.network.power_button_allowed_ips`; cloud-compose does not silently trust
+private or Direct VPC ranges. PPB reads from the right edge of
+`X-Forwarded-For`, denies a missing or too-short trusted chain, and uses
+`power_button_ip_depth` when another trusted proxy is appended after the
+client. The hosted direct-Cloud-Run test must prove an attacker-supplied prefix
+cannot change the selected client. Treat this as a wake-up filter, not as a
+replacement for application authentication or a controlled load
+balancer/Cloud Armor policy.
+
+Google recommends an egress-aware startup probe for ordinary Direct VPC
+services. The power-button proxy cannot use application reachability as its
+startup gate because the application VM is intentionally allowed to be off;
+the proxy has to accept the first request before it can start that VM. Its
+bounded backend dial loop is the retry boundary for this design. A generic
+process-only probe would not prove VPC connectivity.
+
+Cloud Run can retain addresses for up to 20 minutes after a service revision
+scales down. After a service is deleted or moved away, wait one to two hours
+before expecting the subnet itself to be deletable. If Terraform cannot delete
+a module-managed subnet in the same destroy, wait for Google to release the
+serverless reservations and apply destroy again; do not try to delete reserved
+addresses manually.
+
+Where the selected GCP release advertises metadata isolation, cloud-compose blocks containers and unprivileged host processes from the metadata endpoint. Compose services using `network_mode: host` are rejected because they bypass that container boundary. Root retains metadata access for the GCP-only staged key-rotation path. Treat root access, the VM service account, and the rotation service as one privileged host trust boundary.
+
+## DigitalOcean and Linode prerequisites
+
+For DigitalOcean or Linode, the caller owns:
+
+- provider credentials and account access;
+- region, instance size, image, network, firewall, and SSH policy;
+- DNS and TLS;
+- volume lifecycle and deletion protection;
+- a protected Terraform backend;
+- secret authentication for Vault or another secret service.
+
+These providers do not inherit GCP IAM behavior. Do not run GCP key-rotation, metadata, or power-management jobs on a non-GCP host.
+
+## Existing hosts: Ansible and Salt
+
+Use the Ansible role or Salt formula when another system provisions the VM, network, storage, DNS, and firewall and can dedicate an otherwise empty Debian or Ubuntu host to cloud-compose.
+
+These adapters are whole-host owners, not co-tenancy helpers. They require an explicit dedicated-host acknowledgement and manage Docker, systemd units, logging/runtime files, `/home/cloud-compose`, `/mnt/disks/data`, and `/mnt/disks/volumes`. They reject the managed Vault Agent option; existing-host operators must manage any separate Vault Agent themselves.
+
+The adapters are bootstrap and first-install paths. They install packages, place the cloud-compose runtime files, write the project manifest, and can run the initial bootstrap. A completion marker or `creates` guard prevents the bootstrap from behaving like a continuous reconciler. A force-bootstrap option exists for a planned maintenance window, but it is not a continuous desired-state loop.
+
+After changing repository, package, ingress, or lifecycle inputs:
+
+1. apply the configuration-management change;
+2. inspect the files and services that changed;
+3. explicitly rerun the required bootstrap or application lifecycle;
+4. validate and health-check the site.
+
+Do not describe Ansible or Salt as convergent application management until the selected release proves repeated desired-state changes through automated tests.
+
+## Input safety
+
+Terraform inputs, cloud-init payloads, metadata, environment files, and rendered rootfs content can be stored in state, provider metadata, or the host filesystem.
+
+- Treat rootfs overlays and generic environment maps as configuration, not secret channels.
+- Validate identifiers, URLs, branch names, and SSH inputs before rendering.
+- Render values as data. Do not build executable shell by interpolating untrusted input.
+- Never enable shell tracing around credentials.
+- Require SHA-256 verification for every downloaded rootfs, binary, plugin, or support artifact.
+- Pin base operating-system and management-container artifacts.
+
+The host `.env` file contains generated host controls only. It is quoted data decoded by a strict loader and is never sourced as arbitrary shell. Application tuning from `runtime.extra_env` is serialized separately, then reconciled into each project's Compose `.env` before cloud-compose appends its own managed Compose overrides. Application values such as `PHP_*` and `NGINX_*` therefore reach the workload without becoming `BASH_ENV`, linker, retry, Vault, rollout-authentication, or other variables in privileged host processes. Preserve that separation when adding a new adapter.
+
+Rootfs archive mode requires both an immutable URL and a 64-character SHA-256. The host verifies the download before extraction, then reapplies the caller's downstream rootfs overlay so explicit consumer files win. The checksum proves the downloaded bytes match the caller's selection; it does not make an untrusted publisher trustworthy.
+
+Do not send credentials through `extra_env`, user data, or rootfs content. Use attached workload identity or Vault-rendered files, and protect Terraform state even when an input is marked sensitive.
+
+## Privileged managed runtime
+
+Host-management services have elevated access. Any service that can reach the Docker socket, customer data, cloud credentials, or host filesystem is part of the trust boundary.
+
+In releases that implement the modular runtime contract described here, GCP power management, internal services, and internal-service automatic updates are explicit opt-ins. Enabling power management also enables the internal services it requires. Enabling that stack accepts Docker-socket access, privileged host observability through cAdvisor, and host filesystem and device visibility. These services are host-root-equivalent; the container boundary is not a security boundary against their compromise.
+
+When opting in:
+
+- pin the service image by immutable digest;
+- disable unattended pulls from moving tags;
+- verify downloaded binaries and packages;
+- run without the Docker socket when the function can use a narrower API;
+- document required Linux capabilities, mounts, and credentials;
+- isolate failure so an updater cannot take down the application workload.
+
+When a selected release advertises verified managed artifacts, it must verify downloaded Docker plugins, sitectl packages, rootfs archives, and optional rollout artifacts before atomic installation. Preserve those checks when replacing an installer or adding another managed artifact.
+
+## Adopting the modular runtime contract
+
+Use the `required_version` declared by the exact module source. A release that adopts the modular runtime contract changes power management and privileged internal services from implicit behavior to explicit opt-in. To preserve the earlier GCP behavior, configure the controls exposed by that release before advancing the module ref:
+
+```hcl
+gcp = {
+  power_management = {
+    enabled = true
+  }
+}
+
+runtime = {
+  managed_runtime = {
+    internal_services_enabled     = true
+    internal_services_auto_update = true
+  }
+}
+```
+
+Leave them false to adopt the safer defaults. Review any service-account and IAM resources that disappear when the features are disabled. If the selected release does not expose these fields, stop and use its migration guide instead of assuming this example applies.
+
+Cloud-init, identity, and host-runtime changes in a modular release can replace VM or boot resources across the supported cloud providers. The modules do not provide a reserved-IP abstraction, so a replacement can also change the public address. Before applying such a release:
+
+1. pin the current and target module sources and save the reviewed plan;
+2. take application-consistent backups and prove the restore path;
+3. confirm persistent data and Docker-volume disks survive every planned replacement;
+4. account for an ephemeral public-IP change in DNS, TLS, allowlists, and monitoring;
+5. schedule downtime, preserve the previous state and artifact set, and verify every application lifecycle after apply.
+
+Do not combine a provider-entrypoint move with the runtime upgrade unless the state migration and resource replacements have been reviewed separately.
+
+A major release must pass a hosted GCP upgrade gate that starts from the preceding stable release, carries one Terraform state through the proposed release, and rejects unexpected managed-resource deletion. The gate should prove declared state-address moves, persistent data- and Docker-disk identity, expected VM and boot-disk replacement, disk sentinels, and application health before and after the transition. Other hosted provider jobs must continue to prove fresh applies and application startup.
+
+That test is evidence for the maintained fixture, not a substitute for reviewing a downstream deployment. Operators must still preserve their own state backup, inspect the plan produced from their exact inputs and provider lockfile, validate application-consistent backups and restores, and rehearse public-IP, DNS, TLS, allowlist, monitoring, and recovery changes in non-production.
+
+## Unsupported patterns
+
+- Application migrations encoded directly in Terraform or cloud-init.
+- Plaintext secrets in `extra_env`, rootfs overlays, Terraform variables, plan artifacts, or sourced shell files.
+- Production modules or downloads that follow `main`, `latest`, or an unverified URL; a moving image label is acceptable only when an immutable digest fixes the bytes.
+- An auto-updater that follows mutable artifacts or runs without explicit opt-in and acceptance of its host-level privileges.
+- Non-GCP hosts running GCP-specific key rotation or power-management jobs.
+- Ansible or Salt installation on a shared host, or enabling their unsupported managed Vault Agent path.
+- Treating a successful first boot as proof of backup, restore, upgrade, or repeated configuration convergence.
+- Destroying persistent disks or replacing stateful resources without a tested restore.
+
+<CardGroup cols={2}>
+  <Card title="Self-hosted operations" icon="shield" href="/infrastructure/self-hosted-operations">
+    Configure state, IAM, secrets, backups, monitoring, and restore testing.
+  </Card>
+  <Card title="Release compatibility" icon="arrows-rotate" href="/infrastructure/release-compatibility">
+    Pin modules and packages, preserve Terraform state, and update in dependency order.
+  </Card>
+</CardGroup>

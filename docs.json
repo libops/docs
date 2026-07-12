@@ -62,8 +62,22 @@
               "platform/engineer-guide",
               "platform/adoption-model",
               "platform/why-docker-compose",
-              "templates/compose-projects",
-              "templates/app-support",
+              {
+                "group": "Templates & downstream forks",
+                "pages": [
+                  "templates/compose-projects",
+                  "templates/app-support",
+                  "templates/downstream-forks"
+                ]
+              },
+              {
+                "group": "Self-hosting",
+                "pages": [
+                  "infrastructure/cloud-compose",
+                  "infrastructure/self-hosted-operations",
+                  "infrastructure/release-compatibility"
+                ]
+              },
               {
                 "group": "Security & Governance",
                 "pages": [
@@ -73,54 +87,6 @@
               "platform/api-cli",
               "platform/github",
               "platform/automation-backplane"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "CLI reference",
-        "groups": [
-          {
-            "group": "Getting started",
-            "pages": [
-              "cli/introduction",
-              "cli/authentication"
-            ]
-          },
-          {
-            "group": "Core concepts",
-            "pages": [
-              "cli/contexts",
-              "cli/configuration"
-            ]
-          },
-          {
-            "group": "Commands",
-            "pages": [
-              "cli/compose",
-              "cli/port-forwarding",
-              "cli/task-agent"
-            ]
-          },
-          {
-            "group": "Resource Management",
-            "pages": [
-              "cli/organizations",
-              "cli/projects",
-              "cli/sites",
-              "cli/environments",
-              "cli/domains",
-              "cli/settings",
-              "cli/secrets",
-              "cli/firewall",
-              "cli/members"
-            ]
-          },
-          {
-            "group": "Account Management",
-            "pages": [
-              "cli/ssh-keys",
-              "cli/api-keys"
             ]
           }
         ]

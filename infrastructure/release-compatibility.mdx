@@ -1,0 +1,163 @@
+---
+title: "Release Compatibility and Upgrades"
+description: "How image, template, sitectl, plugin, and cloud-compose releases move in dependency order"
+---
+
+LibOps applications span several independently released repositories. Treating them as one moving version makes upgrades nondeterministic. A production deployment needs a tested set of immutable image, template, CLI, plugin, and infrastructure references.
+
+Architecture documentation can describe a contract before every dependent repository has published it. That does not make a tag, package, module, image, or digest available. A compatibility set is consumable only after every selected reference resolves from its release channel and the corresponding hosted CI is green.
+
+## Release dependency order
+
+Publish and consume changes in this order:
+
+| Order | Artifact | Gate before the next layer |
+| --- | --- | --- |
+| 1 | Buildkit image | Image tests pass; bundled upstream release and checksums are correct; application-version tags are published |
+| 2 | Compose template | Base image and direct digests resolve; clean initialization and hosted smoke tests pass |
+| 3 | Core `sitectl` | CLI and plugin SDK contract tests pass; package artifacts are published |
+| 4 | Application plugins | Each plugin is built against the required core; rollout and component tests pass |
+| 5 | Dependent plugins | Included plugins are published first; Drupal precedes ISLE when ISLE requires the newer Drupal contract |
+| 6 | Reusable Terraform dependencies and support images | Required module commits are merged; support images such as PPB are released by immutable digest; validation, mock and image tests, and release CI pass |
+| 7 | `cloud-compose` | The referenced Terraform modules, support-image digests, sitectl package set, and templates are available; provider, bootstrap, and hosted smoke tests pass |
+| 8 | Managed API and control plane | Its pinned infrastructure contract and support images resolve; Go, Terraform contract, mock-plan, and hosted managed-path checks pass |
+| 9 | Public documentation | Every referenced image, package, template, Terraform dependency, cloud-compose tag, and managed integration is live; generated command references are pinned to the released commit set; docs validation and link checks pass |
+
+A layer may be unchanged in a release. The ordering still matters whenever its contract changes.
+
+The `sitectl-app-tmpl` scaffold is contributor tooling rather than a runtime
+dependency. When it adopts a new core SDK helper, update and test it only after
+that core release is live, and publish its contributor documentation after the
+scaffold branch is merged.
+
+## Images and templates
+
+For bundled applications, Buildkit must publish the application-versioned image before a template points `BASE_IMAGE` at that version. Direct Compose images use a tag plus digest; the digest update should come from the artifact actually published under the reviewed tag. A digest keeps the bytes immutable even when no upstream release tag exists, but prefer a semantic release tag over `main` or `latest` when one is available.
+
+For Drupal, Islandora, and WordPress, the runtime image and Composer application tree have separate versions. Update the runtime, `composer.lock`, and application database schema as separate reviewed concerns.
+
+Template changes need both clean-install and upgrade testing. A new checkout proves initialization. An existing data set proves migration and compatibility.
+
+## Core and plugin versions are independent
+
+`sitectl`, `sitectl-drupal`, `sitectl-isle`, and the other plugins are independent packages with independent versions. A core version number must not be applied blindly to every plugin.
+
+A deployment package manifest should record one reviewed version per package:
+
+| Package role | Version source |
+| --- | --- |
+| Core `sitectl` | Core release |
+| Application plugin | That plugin's release |
+| Included plugin | Its own release and declared minimum |
+| Optional platform plugin | Its own release |
+
+Use the [sitectl installation guide](https://sitectl.libops.io/install) for current minimum versions and dependency behavior. Use the [contributor release guide](https://sitectl.libops.io/contributing/development) for the current publisher sequence.
+
+Cloud-compose releases that expose `runtime.sitectl.package_versions` can pin each installed package independently. A legacy shared `version` value is only a fallback for packages without an override. Releases with only one shared version cannot safely represent independently versioned plugins; do not claim reproducible package pins until the selected module actually exposes and records the per-package map.
+
+Production should not follow a package manager's `latest` channel without a reviewed compatibility record.
+
+## Compatibility record
+
+Keep one release record for the complete deployed set. At minimum, record:
+
+| Contract edge | Immutable identity |
+| --- | --- |
+| Buildkit to template | Application/runtime image tag and digest |
+| Template to downstream site | Template release or full commit plus the downstream merge commit |
+| Core to plugin | Core release and each independently released plugin version |
+| Plugin to template | Template repository/ref and the plugin release whose lifecycle and component tests cover it |
+| cloud-compose to sitectl | One version per installed package, when the selected module supports it |
+| cloud-compose to reusable Terraform/support artifacts | Module release or full commit, provider lockfile, exact dependency commits, and support-image digests |
+| Managed control plane to workload | API/control-plane release, pinned infrastructure contract, site repository commit, and recorded deployment operation |
+
+A readable tag explains intent; the digest or full commit fixes bytes. Record both when the artifact format supports both.
+
+## Consumer upgrade workflow
+
+<Steps>
+  <Step title="Record the running set" icon="list-check">
+    Capture the template commit, image tags and digests, core and plugin versions, module source, provider lockfile, and relevant data schema.
+  </Step>
+  <Step title="Read compatibility and migration notes" icon="book-open">
+    Identify minimum core/plugin versions, component changes, manual gates, data migrations, and Terraform state moves.
+  </Step>
+  <Step title="Prove recovery" icon="database">
+    Complete the required backup and confirm that its restore path still works.
+  </Step>
+  <Step title="Update in a branch" icon="code-branch">
+    Let Renovate or a maintainer change immutable references and dependency locks through a pull request.
+  </Step>
+  <Step title="Test non-production" icon="vials">
+    Exercise clean initialization, an upgrade with representative data, application verification, and infrastructure planning.
+  </Step>
+  <Step title="Deploy and verify" icon="rocket">
+    Follow the plugin-declared rollout, complete manual gates, and check public routes, jobs, search, email, logs, and backups.
+  </Step>
+</Steps>
+
+## Application migration gates
+
+Different releases have different rollback properties:
+
+- OJS, Drupal, WordPress, and other applications can run CLI database migrations. Those commands must fail hard and use bounded readiness waits.
+- Omeka S and Omeka Classic can require an administrator to complete an upgrade through the web interface. Their deploy lifecycle starts only the application and required dependencies and holds public Traefik stopped. A required migration prints `ACTION REQUIRED` and exits nonzero; use loopback-only `sitectl port-forward` access to `/admin`, complete the upgrade, stop the forward, and rerun `sitectl deploy --skip-git --no-pull` with the same context. The final bounded full-stack start, healthcheck, and application/extension smoke checks must all pass before declaring the rollout complete.
+- ArchivesSpace can migrate its database during startup. Review its migration behavior and backup requirements before changing the application image.
+- Search indexes may be rebuildable, but the source database or repository data may not be. Document the rebuild order.
+
+An infrastructure caller or managed control plane must preserve a migration-gate failure. It must not treat the partial application-only start as a successful deployment, publish traffic, or rerun a different repository ref. The recorded operation remains incomplete until an operator clears the gate and resumes the same context and checked-out commit.
+
+An old image may not understand a new schema. Do not call image rollback safe unless the application release documents backward compatibility or the recovery plan restores the matching data.
+
+## Terraform module upgrades
+
+Pin the cloud-compose module to an existing release tag or full commit, use the Terraform version declared by that exact source, and commit the provider lockfile appropriate for the calling root module. Documentation that names a planned interface is not evidence that its release tag exists.
+
+Before applying:
+
+- initialize with the selected Terraform version;
+- review provider and module release notes;
+- run validation and a saved plan in CI;
+- inspect replacements, deletes, IAM changes, firewall exposure, disk changes, and user-data changes;
+- back up state and data independently.
+
+Moving from a root provider dispatcher to `providers/gcp`, `providers/do`, or `providers/linode` can change Terraform resource addresses even when the real resources stay the same. Use release-provided `moved` blocks or explicit, reviewed `terraform state mv` operations. Never accept destroy-and-recreate for a data-bearing deployment merely to change the module address.
+
+When a selected modular release changes GCP power management, privileged internal services, or automatic updates to explicit opt-in, review every removed IAM and service resource. Cloud-init and identity changes can replace a VM or boot disk; DigitalOcean and Linode user-data changes can also replace instances. Review persistent-disk survival and public-IP/DNS effects, not only the application diff. Follow the migration checklist in the [cloud-compose deployment boundary](/infrastructure/cloud-compose).
+
+The Ansible and Salt adapters are dedicated-host, first-install bootstrap paths. Updating their input files does not by itself prove that the application lifecycle reran; use their explicit force-bootstrap control only in a planned maintenance window. They do not support cloud-compose-managed Vault Agent configuration.
+
+## Rollback record
+
+Keep enough information to reconstruct the last known-good release:
+
+- previous template commit;
+- image tags and digests;
+- Composer lockfile;
+- core and per-plugin package versions;
+- cloud-compose module source and provider lockfile;
+- Terraform state version;
+- application-consistent data backup and required secrets;
+- migration and restore instructions.
+
+Rollback is a tested procedure, not a list of old version numbers. Exercise it in a non-production environment when a release changes schema, storage layout, encryption, identity, or Terraform addresses.
+
+## Unsupported release practices
+
+- Publishing a template before its image exists.
+- Assigning the core sitectl version to every plugin.
+- Releasing ISLE before a newly required Drupal plugin.
+- Updating production directly from `main`, `latest`, or an unpinned Terraform module; digest-pinned images are immutable even when their readable label moves.
+- Automatically merging Renovate changes without smoke and upgrade tests.
+- Treating a successful Terraform plan as application migration validation.
+- Rolling an image back across an irreversible schema migration.
+- Migrating Terraform module addresses by allowing resource recreation.
+
+<CardGroup cols={2}>
+  <Card title="Downstream forks" icon="code-branch" href="/templates/downstream-forks">
+    Bring updates into a customer-owned repository without erasing local decisions.
+  </Card>
+  <Card title="Self-hosted operations" icon="shield" href="/infrastructure/self-hosted-operations">
+    Prepare state, backups, restore testing, monitoring, and incident ownership.
+  </Card>
+</CardGroup>
