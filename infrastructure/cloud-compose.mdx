@@ -177,10 +177,15 @@ requires explicit original-client CIDRs in
 private or Direct VPC ranges. PPB reads from the right edge of
 `X-Forwarded-For`, denies a missing or too-short trusted chain, and uses
 `power_button_ip_depth` when another trusted proxy is appended after the
-client. The hosted direct-Cloud-Run test must prove an attacker-supplied prefix
-cannot change the selected client. Treat this as a wake-up filter, not as a
-replacement for application authentication or a controlled load
-balancer/Cloud Armor policy.
+client. For the tested direct public Cloud Run PPB URL, the proven value is
+`power_button_ip_depth = 0`: Google appends the original client as the
+rightmost value. The hosted hostile-prefix contract must remain in release CI;
+it supplies an attacker-controlled left prefix and proves that depth zero still
+selects the real runner. Do not reuse that value behind an external load
+balancer or router. Each additional topology needs its own test of the exact
+larger right-edge suffix appended by trusted intermediaries before its larger
+depth is accepted. Treat this as a wake-up filter, not as a replacement for
+application authentication or a controlled load balancer/Cloud Armor policy.
 
 Google recommends an egress-aware startup probe for ordinary Direct VPC
 services. The power-button proxy cannot use application reachability as its
