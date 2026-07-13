@@ -1,0 +1,56 @@
+---
+title: "Current Release Status"
+description: "A dated availability record for the independently released artifacts in the LibOps application and infrastructure stack"
+---
+
+<Warning>
+There is not yet a published, platform-wide known-good release set for the managed shared-router and private-PPB request path. The architecture pages describe the target contract, but they are not evidence that this integration is generally available. Do not change production DNS or infrastructure for that path until a later status record identifies every immutable artifact and its green end-to-end release gate.
+</Warning>
+
+This snapshot was reviewed on **July 13, 2026 at 23:00 UTC**. It is a release record, not a moving "latest" lookup. A later tag does not silently update the compatibility claims on this page.
+
+## Status meanings
+
+| Status | Meaning |
+| --- | --- |
+| Released dependency | The named independent release exists. Consumers must still verify its release notes, immutable identity, and compatibility with their complete deployment. |
+| Released docs set | The exact core and plugin commits were used to generate and validate the published command documentation. |
+| Unrecorded | Independently usable artifacts exist, but LibOps has not published an aggregate compatibility record proving one complete cross-repository set. |
+| Preview | Code or architecture work exists, but the production integration and rollout gate are incomplete. |
+| Blocked | A required release, provenance, CI, or end-to-end gate is not complete. Do not operate the feature as released. |
+
+## Published foundations
+
+| Surface | Dated reference | Status | What this record proves |
+| --- | --- | --- | --- |
+| Core `sitectl` and application plugins | [Generated documentation dependency manifest](https://github.com/libops/sitectl-docs/blob/de317cf1af3ade6097fbe37470a78790807ad713/scripts/snippet-dependencies.json) | Released docs set | The documentation was generated from the full core and plugin commits in that manifest. Package versions remain independent. |
+| cloud-compose | [`0.10.3`](https://github.com/libops/cloud-compose/releases/tag/0.10.3) | Released dependency | This tag exists as a stable self-hosted baseline. Only fields and migrations present in that tag are available to its consumers. |
+| Terraform Cloud Run v2 module | [`0.7.0`](https://github.com/libops/terraform-cloudrun-v2/releases/tag/0.7.0) | Released dependency | The reusable module release exists. That does not prove that cloud-compose or the managed control plane has promoted every module capability. |
+| Buildkit images and Compose templates | The exact template checkout and each `tag@sha256:digest` it records | Unrecorded | Templates record immutable direct-image identities, but this snapshot does not contain a generated aggregate of every template commit, Buildkit digest, and hosted smoke-test result. |
+
+The table deliberately does not invent an image digest, template commit, signature identity, or CI result that has not been captured by a release manifest. For self-hosted deployments, build a deployment-specific record from the exact template commit and immutable references you test.
+
+## Managed integrations not released in this snapshot
+
+| Integration | Status | Gate that remains |
+| --- | --- | --- |
+| Versioned PPB support image | Blocked | A [`0.5.0` source/GitHub release](https://github.com/libops/ppb/releases/tag/0.5.0) exists, but its versioned container is **not published**. There is no released PPB `tag@sha256:digest` to consume or verify against the expected publisher identity. The source tag is not a substitute for that container artifact. |
+| Cloudflare and load balancer to shared Cloud Run router to private per-site PPB | Blocked / preview | Publish and verify the exact router and PPB image digests and expected keyless publisher identities; merge and release the API/router integration; pin the dependencies in the managed Terraform roots; pass the private-origin, client-IP, authorization-preservation, timeout, Direct VPC, and rollback canaries. |
+| Separate request-serving API and `api-worker` Cloud Run services | Preview | Release the managed worker deployment and prove identity bootstrap, database connectivity, readiness, rollout, rollback, and removal of any temporary migration privilege. A process boundary in source or Compose is not proof of this Cloud Run topology. |
+| Platform-wide image, template, CLI, plugin, and infrastructure compatibility manifest | Blocked | Generate the aggregate record from release automation and attach hosted CI evidence for the exact references. Until then, each operator owns a deployment-specific record. |
+
+## What a promoted managed set must record
+
+A future status entry can change a managed integration to released only when it names:
+
+- every Buildkit and support-image tag plus immutable digest;
+- the expected signing repository, workflow identity, and successful verification result for privileged managed images;
+- every template release or full commit;
+- core `sitectl` and each plugin's independent package version;
+- the cloud-compose release or full commit, reusable Terraform-module releases, and provider lockfiles;
+- the API, worker, router, and PPB release identities;
+- the exact hosted smoke, upgrade, migration, canary, and rollback evidence.
+
+<Card title="Release compatibility and upgrades" icon="arrows-rotate" href="/infrastructure/release-compatibility">
+  Follow the dependency order and keep a deployment-specific compatibility and rollback record.
+</Card>

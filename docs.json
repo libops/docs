@@ -75,6 +75,7 @@
                 "pages": [
                   "infrastructure/cloud-compose",
                   "infrastructure/self-hosted-operations",
+                  "infrastructure/current-release-status",
                   "infrastructure/release-compatibility"
                 ]
               },

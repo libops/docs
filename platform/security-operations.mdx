@@ -9,6 +9,10 @@ Security ownership changes with the adoption layer. Cloudflare edge policy, LibO
 For the full self-hosted checklist, including Terraform state, cloud IAM, secret delivery, backups, and restore testing, see [Self-Hosted Operations](/infrastructure/self-hosted-operations).
 </Info>
 
+<Warning>
+The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production migration or DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
+</Warning>
+
 ## Managed-platform defaults
 
 <CardGroup cols={3}>
@@ -23,9 +27,9 @@ For the full self-hosted checklist, including Terraform state, cloud IAM, secret
   </Card>
 </CardGroup>
 
-## Managed ingress request path
+## Managed ingress target request path
 
-LibOps places Cloudflare in front of managed public sites. The managed path has one declared public edge, a source-restricted router boundary, and an IAM-authenticated site origin:
+The target design places Cloudflare in front of managed public sites. It has one declared public edge, a source-restricted router boundary, and an IAM-authenticated site origin:
 
 ```text
 Visitor
@@ -46,21 +50,21 @@ Private IAM-authenticated per-site PPB
 VM private IP and application port
 ```
 
-Cloud Armor admits only Cloudflare's current published IPv4 and IPv6 proxy ranges and denies other sources. The shared router accepts traffic only from the load balancer. Its default `run.app` URL is disabled so it cannot become an alternate public edge.
+In the target contract, Cloud Armor must admit only Cloudflare's current published IPv4 and IPv6 proxy ranges and deny other sources. The shared router must accept traffic only from the load balancer, and its default `run.app` URL must be disabled so it cannot become an alternate public edge.
 
-The per-site power and proxy backend (PPB) has a different URL decision. Its `run.app` hostname remains addressable because the shared router uses that hostname as the origin, but it is not public: Cloud Run invocation is granted only to the router service account. The VM application port is private and is reached only through the runtime subnet firewall rule.
+The target per-site power and proxy backend (PPB) has a different URL decision. Its `run.app` hostname must remain addressable because the shared router uses that hostname as the origin, but it must not be public: Cloud Run invocation is granted only to the router service account. The VM application port remains private and is reached only through the runtime subnet firewall rule.
 
 Self-hosted operators must supply their own DNS, certificate lifecycle, trusted-proxy configuration, firewall policy, and abuse controls. Enabling Traefik in a template does not provide this surrounding edge service.
 
 ### Client IP and request identity
 
-Cloudflare supplies `CF-Connecting-IP`. Because the load balancer has already restricted the source to Cloudflare proxy networks, the router can treat that header as eligible input, but it still fails closed unless there is exactly one non-comma, syntactically valid IP value. It does not fall back to `True-Client-IP`, `CF-Connecting-IPv6`, or a caller-supplied `X-Forwarded-For` value.
+In the target path, Cloudflare supplies `CF-Connecting-IP`. Because the load balancer has already restricted the source to Cloudflare proxy networks, the router may treat that header as eligible input, but it must fail closed unless there is exactly one non-comma, syntactically valid IP value. It must not fall back to `True-Client-IP`, `CF-Connecting-IPv6`, or a caller-supplied `X-Forwarded-For` value.
 
-The router overwrites `X-Libops-Client-IP` with that validated address and rebuilds the forwarded client headers. Each site PPB reads the single canonical `X-Libops-Client-IP` value at depth `0` and checks it against that site's wake-up allowlist. An incoming hostile `X-Forwarded-For` prefix or forged `X-Libops-Client-IP` therefore cannot move the selected address. This depth-zero contract is specific to the router-created canonical header; it is not the direct public PPB `X-Forwarded-For` contract documented for self-hosted cloud-compose.
+The router must overwrite `X-Libops-Client-IP` with that validated address and rebuild the forwarded client headers. Each site PPB must read the single canonical `X-Libops-Client-IP` value at depth `0` and check it against that site's wake-up allowlist. An incoming hostile `X-Forwarded-For` prefix or forged `X-Libops-Client-IP` must not move the selected address. This target depth-zero contract is specific to the router-created canonical header; it is not the direct public PPB `X-Forwarded-For` contract documented for self-hosted cloud-compose.
 
-The router authenticates to each private PPB with a Google ID token for one fixed custom HTTPS audience. It sends that credential in `X-Serverless-Authorization`, leaving the request's application `Authorization` header intact for the site. Cloud Run IAM and the custom audience authenticate the router-to-PPB hop. The client-IP allowlist is an additional wake-up policy, not application authentication.
+The router must authenticate to each private PPB with a Google ID token for one fixed custom HTTPS audience. It must send that credential in `X-Serverless-Authorization`, leaving the request's application `Authorization` header intact for the site. Cloud Run IAM and the custom audience authenticate the target router-to-PPB hop. The client-IP allowlist is an additional wake-up policy, not application authentication.
 
-### Boundary ownership
+### Target boundary ownership
 
 | Layer | Owns | Must preserve |
 | --- | --- | --- |
@@ -73,19 +77,21 @@ The router authenticates to each private PPB with a Google ID token for one fixe
 
 ## Private VM delivery on Google Cloud
 
-The site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. The same pattern carries authenticated controller requests to the private rollout endpoint. Cloud Run services do not support Direct VPC ingress: external traffic still enters the declared Cloudflare, load-balancer, and Cloud Run path.
+In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. The same pattern carries authenticated controller requests to the private rollout endpoint. Cloud Run services do not support Direct VPC ingress: external traffic still enters the declared Cloudflare, load-balancer, and Cloud Run path.
 
-Direct VPC revision addresses are ephemeral, so the VM firewall cannot safely allow individual addresses or use a Cloud Run service identity as the ingress source. It allows the complete regional subnet CIDR on only the required application or controller ports and targets the runtime VM service account. Every workload attached to that subnet is consequently inside the source trust zone.
+The target deployment sets Cloud Run egress to `PRIVATE_RANGES_ONLY`. Only traffic to private destination ranges uses the VPC attachment; other outbound traffic follows normal Cloud Run egress and does not traverse this VPC or its Cloud NAT. Changing the service to `ALL_TRAFFIC` creates a different routing, NAT, cost, and startup-latency contract and requires a separate review and hosted test.
 
-The managed project creates a `/20` subnet in each selected region. A self-hosted deployment must use at least `/26`, but that minimum may be too small once existing allocations, Cloud Run's `/28` allocation blocks, roughly two addresses per steady-state service instance, and overlapping revisions are counted. The service, VM, and subnet must use compatible regions, and the network MTU remains Cloud Run's default `1460`.
+Direct VPC revision addresses are ephemeral, so the target VM firewall cannot safely allow individual addresses or use a Cloud Run service identity as the ingress source. It must allow the complete regional subnet CIDR on only the required application or controller ports and target the runtime VM service account. Every workload attached to that subnet is consequently inside the source trust zone.
+
+The target managed project allocates a `/20` subnet in each selected region. A self-hosted deployment must use at least `/26`, but that minimum may be too small once existing allocations, Cloud Run's `/28` allocation blocks, roughly two addresses per steady-state service instance, and overlapping revisions are counted. The service, VM, and subnet must use compatible regions, and the network MTU remains Cloud Run's default `1460`.
 
 Cloud Run can retain revision addresses for up to 20 minutes after scale-down. After detaching or deleting the last Cloud Run user, allow one to two hours before deleting the subnet; reserved serverless addresses cannot be removed manually.
 
 ### Cold starts and timeout ownership
 
-Direct VPC attachment can delay new connections for a minute or more. An ordinary Cloud Run service should use a bounded, retrying startup probe against a representative egress destination before accepting traffic. PPB cannot use the sleeping application VM as that probe target: PPB must accept the first request in order to start the VM, so requiring the VM to be reachable at startup would deadlock the wake path.
+Direct VPC attachment can delay new connections for a minute or more. An ordinary Cloud Run service should use a bounded, retrying startup probe against a representative egress destination before accepting traffic. In the target design, PPB cannot use the sleeping application VM as that probe target: PPB must accept the first request in order to start the VM, so requiring the VM to be reachable at startup would deadlock the wake path.
 
-The managed exception uses bounded retries inside that first request. PPB has 45 seconds to power on the VM and 35 seconds to establish the backend connection. It does not replay an application request after a connection succeeds. If a controlled failure occurs before dispatch, it can return `503` with `Retry-After`; the client decides whether its operation is safe to retry. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
+The target managed exception uses bounded retries inside that first request. Its contract allocates PPB 45 seconds to power on the VM and 35 seconds to establish the backend connection. PPB must not replay an application request after a connection succeeds. If a controlled failure occurs before dispatch, it may return `503` with `Retry-After`; the client decides whether its operation is safe to retry. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
 
 Every outer deadline leaves room for the inner operation to finish:
 
@@ -96,7 +102,7 @@ Router Cloud Run request             110 < 120 seconds
 Cloudflare non-Enterprise read ceiling          120 seconds
 ```
 
-The chain is often summarized as `45 + 35 < 100 < 110 < 120`, with the separate five-second route lookup also fitting inside the 110-second router request. Terraform rejects equality or inversion at any boundary. Do not raise the outer value above 120 unless the Cloudflare zone has an Enterprise timeout and every inner deadline and test is changed as one contract.
+The target chain is summarized as `45 + 35 < 100 < 110 < 120`, with the separate five-second route lookup also fitting inside the 110-second router request. Its Terraform contract must reject equality or inversion at any boundary. Do not raise the outer value above 120 unless the Cloudflare zone has an Enterprise timeout and every inner deadline and test is changed as one contract.
 
 ## Vault-backed secrets
 

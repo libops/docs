@@ -149,7 +149,11 @@ Managed Terraform keeps long-lived ownership narrow:
 
 Creation follows foundation, organization, Vault configuration, project, then edge; deletion reverses that order. A site does not receive an independent Terraform state, and one state must not manage a resource owned by another root.
 
-Controller and site delivery use private network traffic but remain authenticated. Shared project state owns the Cloud Run service identity, network-use permissions, and regional network capacity; runtime state owns instance-scoped power grants and VM firewall rules. The public site path still enters through the declared Cloudflare and load-balancer edge because Direct VPC provides Cloud Run **egress**, not service ingress. See [Security and Operations](/platform/security-operations) for the exact router-to-PPB identity, canonical client-IP, subnet, startup, and timeout contracts.
+<Warning>
+The shared-router/private-PPB integration is a target architecture and is not generally released in the [current status snapshot](/infrastructure/current-release-status). The ownership boundary remains valid, but the linked router identity, canonical client-IP, and timeout details must not be treated as the current production topology until their release gate is complete.
+</Warning>
+
+In that target path, controller and site delivery use private network traffic but remain authenticated. Shared project state owns the Cloud Run service identity, network-use permissions, and regional network capacity; runtime state owns instance-scoped power grants and VM firewall rules. The public site path still enters through the declared Cloudflare and load-balancer edge because Direct VPC provides Cloud Run **egress**, not service ingress. See [Security and Operations](/platform/security-operations) for the target router-to-PPB identity, canonical client-IP, subnet, startup, and timeout contracts.
 
 ## Responsibility changes by adoption layer
 
