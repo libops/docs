@@ -187,6 +187,12 @@ larger right-edge suffix appended by trusted intermediaries before its larger
 depth is accepted. Treat this as a wake-up filter, not as a replacement for
 application authentication or a controlled load balancer/Cloud Armor policy.
 
+The LibOps managed platform's depth-zero setting is a separate contract. Its
+authenticated shared router replaces any incoming canonical client-IP header,
+and the private PPB reads that single value at depth zero; it does not trust the
+incoming `X-Forwarded-For` chain. See [Security and
+Operations](/platform/security-operations) for that managed request path.
+
 Google recommends an egress-aware startup probe for ordinary Direct VPC
 services. The power-button proxy cannot use application reachability as its
 startup gate because the application VM is intentionally allowed to be off;

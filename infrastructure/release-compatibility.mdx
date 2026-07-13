@@ -18,9 +18,9 @@ Publish and consume changes in this order:
 | 3 | Core `sitectl` | CLI and plugin SDK contract tests pass; package artifacts are published |
 | 4 | Application plugins | Each plugin is built against the required core; rollout and component tests pass |
 | 5 | Dependent plugins | Included plugins are published first; Drupal precedes ISLE when ISLE requires the newer Drupal contract |
-| 6 | Reusable Terraform dependencies and support images | Required module commits are merged; support images such as PPB are released by immutable digest; validation, mock and image tests, and release CI pass |
+| 6 | Reusable Terraform dependencies and support images | Required module commits are merged; support images such as PPB are released by immutable digest and signed by the expected publisher identity; validation, mock and image tests, and release CI pass |
 | 7 | `cloud-compose` | The referenced Terraform modules, support-image digests, sitectl package set, and templates are available; provider, bootstrap, and hosted smoke tests pass |
-| 8 | Managed API and control plane | Its pinned infrastructure contract and support images resolve; Go, Terraform contract, mock-plan, and hosted managed-path checks pass |
+| 8 | Managed API and control plane | Its pinned infrastructure contract and support images resolve; managed images come from CI-passed commits and have verified signatures; Go, Terraform contract, mock-plan, and hosted managed-path checks pass |
 | 9 | Public documentation | Every referenced image, package, template, Terraform dependency, cloud-compose tag, and managed integration is live; generated command references are pinned to the released commit set; docs validation and link checks pass |
 
 A layer may be unchanged in a release. The ordering still matters whenever its contract changes.
@@ -29,6 +29,18 @@ The `sitectl-app-tmpl` scaffold is contributor tooling rather than a runtime
 dependency. When it adopts a new core SDK helper, update and test it only after
 that core release is live, and publish its contributor documentation after the
 scaffold branch is merged.
+
+## Managed artifact promotion gates
+
+A digest fixes image bytes, but it does not prove which repository or workflow produced them. Managed request-path images add a provenance gate to the dependency order:
+
+1. Pull-request CI builds, tests, and scans the proposed image without production publisher credentials.
+2. A publisher runs only after the repository's required CI succeeds for the exact commit on the protected primary branch. It publishes that commit's image, records its digest, and signs the digest with short-lived workload identity.
+3. Before changing Terraform, the release operator verifies the signature against the expected repository and workflow identity, not merely any valid keyless signature.
+4. Terraform pins the verified digest. A readable tag may accompany it, but a tag is not the deployed identity.
+5. The dependent module or control plane runs validation and its hosted end-to-end path with those exact references before promotion.
+
+For the managed site path, publish and verify the PPB support image before cloud-compose or the vendored managed runtime points at it. Publish and verify the shared router image before shared edge Terraform pins it. The managed API and control plane move only after both infrastructure dependency sets are available and green. A failed smoke test is fixed at the producing layer and republished; it is not bypassed by pointing consumers at a moving tag.
 
 ## Images and templates
 
@@ -69,7 +81,7 @@ Keep one release record for the complete deployed set. At minimum, record:
 | Plugin to template | Template repository/ref and the plugin release whose lifecycle and component tests cover it |
 | cloud-compose to sitectl | One version per installed package, when the selected module supports it |
 | cloud-compose to reusable Terraform/support artifacts | Module release or full commit, provider lockfile, exact dependency commits, and support-image digests |
-| Managed control plane to workload | API/control-plane release, pinned infrastructure contract, site repository commit, and recorded deployment operation |
+| Managed control plane to workload | API/control-plane release, verified image digests and publisher identities, pinned infrastructure contract, site repository commit, and recorded deployment operation |
 
 A readable tag explains intent; the digest or full commit fixes bytes. Record both when the artifact format supports both.
 

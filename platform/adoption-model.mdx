@@ -149,11 +149,7 @@ Managed Terraform keeps long-lived ownership narrow:
 
 Creation follows foundation, organization, Vault configuration, project, then edge; deletion reverses that order. A site does not receive an independent Terraform state, and one state must not manage a resource owned by another root.
 
-Controller delivery is private network traffic but still authenticated. A Cloud Run controller can send to a VM through Direct VPC **egress**. A site-facing Cloud Run power proxy uses the same egress pattern to reach the VM's private application port. Cloud Run services do not gain Direct VPC ingress from this configuration: public traffic still enters the declared Cloud Run/edge ingress, and VPC firewall rules govern the egress hop to the VM.
-
-Direct VPC addresses are ephemeral. The VM ingress rule therefore allows the complete selected subnet CIDR on only the required port and targets the runtime service account. The project foundation owns the Cloud Run service identity, required network-use role, and reusable custom-role definitions; per-runtime state owns the instance-scoped role bindings and firewall rule. The Cloud Run service, subnet, and VM must use compatible regions, the subnet needs adequate address capacity, and the default MTU remains `1460`.
-
-Ordinary Direct VPC services should use an egress-aware startup probe with a bounded retry window. The power proxy is the deliberate exception: the application VM may be off, so application reachability cannot be its startup gate. Its bounded first-request power-on and backend dial loop is the readiness boundary. Clients must still tolerate occasional connection resets during Cloud Run or network maintenance.
+Controller and site delivery use private network traffic but remain authenticated. Shared project state owns the Cloud Run service identity, network-use permissions, and regional network capacity; runtime state owns instance-scoped power grants and VM firewall rules. The public site path still enters through the declared Cloudflare and load-balancer edge because Direct VPC provides Cloud Run **egress**, not service ingress. See [Security and Operations](/platform/security-operations) for the exact router-to-PPB identity, canonical client-IP, subnet, startup, and timeout contracts.
 
 ## Responsibility changes by adoption layer
 
