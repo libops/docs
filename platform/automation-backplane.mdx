@@ -7,6 +7,10 @@ LibOps uses GitHub as an important collaboration surface, but the platform shoul
 
 LibOps is building a webhook-driven automation backplane for events that need to trigger work inside the platform: dependency scanning, CI runner orchestration, deployment follow-up, and repository maintenance.
 
+<Warning>
+The separate request-serving API and `api-worker` Cloud Run deployment described below is a **preview target**, not a released managed topology in the [July 13, 2026 status snapshot](/infrastructure/current-release-status). Process separation in source code or a Compose development stack does not prove that the worker service, identity migration, database path, rollout, and rollback have been promoted in production.
+</Warning>
+
 ## GitHub events in LibOps
 
 The automation backplane listens for GitHub events such as:
@@ -37,7 +41,7 @@ The service is intentionally event-driven. GitHub is the collaboration surface, 
 
 LibOps keeps customer-facing API requests separate from retrying background work. The API request path validates the caller, commits the requested state change, records any required outbox event in MariaDB, and returns. Control-plane workers then drain durable queues for reconciliation, webhook fanout, Slack task replies, and Terraform scheduling.
 
-API-local maintenance work follows the same rule. Organization synchronization and email verification cleanup run under the dedicated `api-worker` process, selected by `LIBOPS_API_WORKER_JOBS`, rather than inside the request-serving API process. The API worker exposes its own `/health` and `/ready` endpoints so it can be scaled, rolled out, and restarted independently.
+The target API-local maintenance contract follows the same rule. Organization synchronization and email verification cleanup run under the dedicated `api-worker` process, selected by `LIBOPS_API_WORKER_JOBS`, rather than inside the request-serving API process. The API worker exposes its own `/health` and `/ready` endpoints so a released worker deployment can scale, roll out, and restart independently.
 
 This gives the platform three operational boundaries:
 
@@ -45,7 +49,7 @@ This gives the platform three operational boundaries:
 - **Durable work before acknowledgement:** mutating API paths should not report success until both the resource change and the outbox/event record are committed.
 - **Last-known-good runtime state:** existing sites continue serving from their last applied configuration if the API or control plane is temporarily unavailable. A control-plane outage should block new changes, not running site traffic.
 
-The request-serving API and `api-worker` deploy as separate Cloud Run services. The API service uses `/health` for liveness and `/ready` as the startup gate. The worker runs with at least one instance and always-allocated CPU because it owns polling loops; moving those loops back into the API process would reintroduce request-path coupling.
+In the target managed deployment, the request-serving API and `api-worker` will deploy as separate Cloud Run services. The API service will use `/health` for liveness and `/ready` as the startup gate. The worker requires at least one instance and always-allocated CPU because it owns polling loops; moving those loops back into the API process would reintroduce request-path coupling. Do not use these settings as a rollout instruction until the status record identifies the released worker artifact and migration runbook.
 
 Vault OIDC discovery and JWKS validation follow the same last-known-good rule. Successful live JWKS refreshes write a local cache containing the issuer, JWKS URL, keys, and cache time. If Vault or JWKS discovery is briefly unavailable during startup, the API can start from that cache for the configured trust window and reports `degraded_last_known_good` in `/ready`. After the trust window expires, readiness fails and cached keys are no longer used.
 

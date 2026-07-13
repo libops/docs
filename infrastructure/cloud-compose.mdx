@@ -12,7 +12,7 @@ Use the [cloud-compose reference documentation](https://cc.libops.io/) for the e
 </Info>
 
 <Warning>
-This page is an architecture contract, not a release announcement. Examples use `RELEASE_OR_FULL_SHA` deliberately. Do not configure a provider entrypoint, foundation module, package-version map, or Direct VPC option until the exact cloud-compose tag or commit you selected contains it and its release CI is green.
+This page is an architecture contract, not a release announcement. Examples use `RELEASE_OR_FULL_SHA` deliberately. Do not configure a provider entrypoint, foundation module, package-version map, or Direct VPC option until the exact cloud-compose tag or commit you selected contains it and its release CI is green. Check the dated [Current Release Status](/infrastructure/current-release-status) before interpreting a planned integration as released.
 </Warning>
 
 ## Deployment flow
@@ -83,6 +83,8 @@ A module ref alone does not make a deployment reproducible. Record and pin:
 
 Core `sitectl` and its plugins have independent releases. In releases with per-package pins, `runtime.sitectl.version` is only the legacy fallback for packages without a package-specific value, and `latest` remains mutable. A release with only one shared version cannot represent an independently released plugin set. On a host with several projects, all projects share one installed package set, so select a set compatible with every application plugin on that host.
 
+A package-version map selects versions; it does not retain their artifacts. The current LibOps package publisher rebuilds repository metadata from current release artifacts and can prune an older package. For a durable production rollback, preserve a repository snapshot or the matching GitHub release packages and `checksums.txt` in controlled storage, then test installation from that retained source.
+
 A branch or tag in `runtime.compose` intentionally follows future repository changes. A full commit is detached and verified before deployment, and cloud-compose records the deployed head for later comparison. A commit identifies repository bytes; downstream branch protection and commit-signing policy still determine whether those bytes were trusted.
 
 ## Host-control trust boundary
@@ -127,6 +129,10 @@ If the selected release does not contain that foundation module, follow its
 release-specific IAM instructions. Do not copy an unpublished foundation
 module from a development branch into an otherwise pinned production stack.
 
+<Warning>
+In the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status), PPB `0.5.0` exists as a source/GitHub release but its versioned container is not published. The power-management paragraphs below define the contract a selected release must satisfy; they do not make `0.5.0` a consumable image or make the managed shared-router/private-PPB path available.
+</Warning>
+
 The optional Cloud Run power-management ingress reaches the VM's private
 application port through [Direct VPC
 egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc); it does
@@ -143,6 +149,14 @@ The word "ingress" here describes the proxy's application role, not a Direct
 VPC ingress feature. Cloud Run services do not support Direct VPC ingress.
 Public requests enter Cloud Run through its configured service/edge ingress;
 Direct VPC egress is only the private hop from that service to the VM.
+
+Cloud-compose configures this Cloud Run attachment with
+`vpc_direct_egress = "PRIVATE_RANGES_ONLY"`. Only requests to private
+destination ranges use the VPC path. Other outbound traffic follows normal
+Cloud Run egress and does not traverse this VPC or its Cloud NAT. Changing the
+service to `ALL_TRAFFIC` is not a tuning-only change: it creates a different
+routing, NAT, cost, and cold-start contract and requires a separate design
+review and hosted smoke test.
 
 When power management is enabled, the subnet must be IPv4 `/26` or larger, use
 RFC1918, RFC6598 (`100.64.0.0/10`), or Class E (`240.0.0.0/4`) space, and keep
@@ -187,11 +201,12 @@ larger right-edge suffix appended by trusted intermediaries before its larger
 depth is accepted. Treat this as a wake-up filter, not as a replacement for
 application authentication or a controlled load balancer/Cloud Armor policy.
 
-The LibOps managed platform's depth-zero setting is a separate contract. Its
-authenticated shared router replaces any incoming canonical client-IP header,
-and the private PPB reads that single value at depth zero; it does not trust the
-incoming `X-Forwarded-For` chain. See [Security and
-Operations](/platform/security-operations) for that managed request path.
+The target LibOps managed platform's depth-zero setting is a separate,
+unreleased contract. Its authenticated shared router must replace any incoming
+canonical client-IP header, and the private PPB must read that single value at
+depth zero rather than trust the incoming `X-Forwarded-For` chain. See [Security
+and Operations](/platform/security-operations) for that target managed request
+path.
 
 Google recommends an egress-aware startup probe for ordinary Direct VPC
 services. The power-button proxy cannot use application reachability as its

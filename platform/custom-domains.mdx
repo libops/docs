@@ -1,9 +1,13 @@
 ---
 title: "Custom Domains"
-description: "Add a public hostname to a LibOps-managed site"
+description: "Prepare a public hostname after managed ingress is enabled for a LibOps-managed site"
 ---
 
-LibOps sites can serve traffic for customer-owned domains through the shared Cloudflare ingress path. You add the hostname to the site in LibOps, then point the hostname at the LibOps SaaS fallback hostname.
+The target LibOps managed-ingress service can serve customer-owned domains through a shared Cloudflare path. You add the hostname to the site in LibOps, then point it at the LibOps SaaS fallback hostname only after LibOps confirms that the managed ingress release is enabled for that site.
+
+<Warning>
+The shared router and private site-origin path is not generally available in the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status). Creating a domain record in the dashboard or API does not prove that end-to-end routing is active. Do not change production DNS until LibOps support confirms the current ingress path and fallback hostname for your site.
+</Warning>
 
 Do not point customer DNS directly at a site VM, Cloud Run service, or load balancer IP. The public hostname should enter through Cloudflare so edge rules, TLS, rate limits, and the LibOps site router stay in the request path.
 
@@ -19,6 +23,7 @@ You need:
 - Access to the domain's DNS provider.
 - A subdomain such as `collections.example.edu` or `journal.example.org`.
 - A publishing plan for production firewall access.
+- Confirmation from LibOps support that managed ingress is enabled for this site and that `customers.libops.site` is the correct current DNS target.
 
 <Note>
 Root domains such as `example.edu` require DNS-provider-specific CNAME flattening or ALIAS/ANAME support. Use a subdomain unless LibOps support has confirmed the root-domain plan.
@@ -34,11 +39,11 @@ Root domains such as `example.edu` require DNS-provider-specific CNAME flattenin
 6. Enter the hostname, for example `collections.example.edu`.
 7. Confirm the target site and save.
 
-After saving, LibOps records the domain against the site as active. The shared ingress router can route the hostname as soon as DNS sends traffic to the LibOps fallback hostname.
+After saving, LibOps records the requested domain against the site. An active database status alone does not prove that the edge and origin path has been promoted or can route traffic. Wait for managed-ingress confirmation before changing DNS.
 
 ## Add DNS records
 
-Point the public hostname at the LibOps fallback hostname:
+After LibOps confirms the site's ingress path, point the public hostname at the supplied fallback hostname. For the target architecture documented here, that value is:
 
 ```text
 Type:  CNAME
@@ -55,9 +60,10 @@ Technical operators can create, inspect, and remove the same domain resources th
 
 ## Check Routing
 
-The domain is ready when:
+The domain is ready only when:
 
 - LibOps reports the domain as active.
+- LibOps confirms that the site's managed ingress and private origin are promoted and healthy.
 - Public DNS resolves the hostname to the LibOps fallback hostname.
 - TLS is available at the edge.
 - Firewall rules allow the intended visitors. For a public production site, this usually includes `0.0.0.0/0` for IPv4 traffic.

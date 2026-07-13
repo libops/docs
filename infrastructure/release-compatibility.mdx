@@ -7,6 +7,10 @@ LibOps applications span several independently released repositories. Treating t
 
 Architecture documentation can describe a contract before every dependent repository has published it. That does not make a tag, package, module, image, or digest available. A compatibility set is consumable only after every selected reference resolves from its release channel and the corresponding hosted CI is green.
 
+<Info>
+The dated [Current Release Status](/infrastructure/current-release-status) records which foundations are independently released and which managed integrations remain preview or blocked. It intentionally does not fill missing digests or CI evidence with assumptions.
+</Info>
+
 ## Release dependency order
 
 Publish and consume changes in this order:
@@ -68,6 +72,8 @@ Use the [sitectl installation guide](https://sitectl.libops.io/install) for curr
 Cloud-compose releases that expose `runtime.sitectl.package_versions` can pin each installed package independently. A legacy shared `version` value is only a fallback for packages without an override. Releases with only one shared version cannot safely represent independently versioned plugins; do not claim reproducible package pins until the selected module actually exposes and records the per-package map.
 
 Production should not follow a package manager's `latest` channel without a reviewed compatibility record.
+
+The current Linux package publisher rebuilds APT and RPM metadata from the current release artifacts and does not retain older versions in the package repository. A per-package version map is therefore reproducible only while every named package remains downloadable. For a long-lived production rollback, retain a repository snapshot or archive the matching GitHub release packages and `checksums.txt` in controlled storage. A version string without a retained artifact is not a recovery plan.
 
 ## Compatibility record
 
@@ -147,6 +153,7 @@ Keep enough information to reconstruct the last known-good release:
 - image tags and digests;
 - Composer lockfile;
 - core and per-plugin package versions;
+- retained native-package or GitHub release assets plus their published checksums, when the package repository does not preserve that version;
 - cloud-compose module source and provider lockfile;
 - Terraform state version;
 - application-consistent data backup and required secrets;
@@ -164,6 +171,7 @@ Rollback is a tested procedure, not a list of old version numbers. Exercise it i
 - Treating a successful Terraform plan as application migration validation.
 - Rolling an image back across an irreversible schema migration.
 - Migrating Terraform module addresses by allowing resource recreation.
+- Assuming a native-package pin remains installable after the package repository has pruned that release.
 
 <CardGroup cols={2}>
   <Card title="Downstream forks" icon="code-branch" href="/templates/downstream-forks">

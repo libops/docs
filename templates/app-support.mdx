@@ -96,6 +96,28 @@ Do not edit generated configuration inside a running container. The next render 
 
 Continuous confd rendering is an explicit image option, not a reason to make arbitrary files mutable. Changes still need a declared input and a restart or reload behavior that the image supports.
 
+### Ingress upload and timeout contract
+
+The shared `sitectl` ingress component owns two operator-facing tuning values. Its defaults are component defaults applied when the component is set; they are not a promise that every raw image has identical Dockerfile defaults.
+
+| `sitectl set ingress` option | Accepted input | Component default |
+| --- | --- | --- |
+| `--max-upload-size` | Digits with an optional case-insensitive `K`, `M`, or `G` suffix, such as `1048576`, `128M`, or `2G`. Decimals and a `T` suffix are rejected. | `128M` |
+| `--upload-timeout` | One integer and one unit: `ms`, `s`, `m`, or `h`, such as `500ms`, `300s`, `10m`, or `1h`. A unitless or compound value such as `300` or `1m30s` is rejected. | `300s` |
+
+For a PHP/nginx application plugin, a successful component change writes the following component-owned values into the tracked application service:
+
+| Input | Tracked Compose result | Rendered behavior |
+| --- | --- | --- |
+| `--max-upload-size` | `PHP_UPLOAD_MAX_FILESIZE`, `PHP_POST_MAX_SIZE`, `NGINX_CLIENT_MAX_BODY_SIZE` | PHP upload and POST limits plus nginx request-body limit |
+| `--upload-timeout` | `NGINX_CLIENT_BODY_TIMEOUT`, `NGINX_FASTCGI_READ_TIMEOUT`, `NGINX_FASTCGI_SEND_TIMEOUT` | nginx client-body and FastCGI read/send timeouts, using the supplied duration unchanged |
+| `--upload-timeout` | `PHP_MAX_INPUT_TIME`, `PHP_MAX_EXECUTION_TIME`, `PHP_REQUEST_TERMINATE_TIMEOUT` | PHP and PHP-FPM timeout values in whole seconds; a subsecond remainder rounds up |
+| `--upload-timeout` | Traefik `--entryPoints.<name>.transport.respondingTimeouts.readTimeout` for the configured HTTP and HTTPS entrypoints | Edge request-read timeout, using the supplied duration unchanged |
+
+Drupal, Islandora, OJS, Omeka Classic, Omeka S, and WordPress use that PHP/nginx mapping. ArchivesSpace does not: its plugin deliberately removes the shared PHP/nginx variables because its JVM application image does not consume them. For ArchivesSpace, `--upload-timeout` updates Traefik only, and `--max-upload-size` does not establish a backend upload limit. An ArchivesSpace backend limit or timeout needs an explicit application-plugin and image mapping before it can be described as end to end.
+
+Container environment values override image `ENV` defaults, and confd renders the supported nginx and PHP files from those values during startup. A later `sitectl set` or component reconciliation can replace manual edits to component-owned Compose fields, so make durable changes through the component and commit its diff.
+
 ## Secrets and database initialization
 
 The Compose secret boundary follows least privilege:
