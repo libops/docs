@@ -37,6 +37,27 @@ Tracked Compose workload
 
 Terraform owns durable infrastructure. The template and application plugin own initialization, build, application migrations, start, health, and rollout ordering.
 
+## Module and verification layers
+
+| Layer | Responsibility |
+| --- | --- |
+| Consumer root | Select one pinned provider entrypoint, backend, provider lockfile, and site-specific policy. |
+| Provider adapter | Normalize provider inputs; create that provider's compute, network, storage, identity, and firewall resources; reject unsupported inputs. |
+| Provider-neutral runtime | Render the shared host bootstrap, repository checkout, sitectl package set, context, and lifecycle contract. |
+| Ansible or Salt adapter | Install the reviewed existing-host bootstrap contract on a dedicated host without pretending to own cloud resources. |
+| Template and sitectl plugin | Own application configuration, initialization, migrations, health, and app-specific operations. |
+
+The following CI boundary is a contribution rule for changes moving through review. It does not claim that every selected cloud-compose release already contains a particular Go harness, cleanup binary, or namespace migration; the pinned source and its green release workflows remain authoritative.
+
+| Verification surface | Appropriate work |
+| --- | --- |
+| Terraform tests | Input validation, module wiring, plan-time invariants, state-address moves, and provider-resource contracts. |
+| Thin shell wrappers | Set up provider or SSH environment, invoke pinned tools, and preserve their exit status. Shell should not own structured discovery, identifier parsing, retry state, or cleanup policy. |
+| Compiled Go helpers | Parse structured provider output, validate resource ownership, enforce deadlines and retries, clean up test resources, and prove no owned resources remain. Build the reviewed helper in CI and run that artifact in privileged hosted jobs; do not use `go run` to compile repository code while deployment credentials are present. |
+| Go tests | Exercise naming, ownership, retry, deadline, parsing, cleanup, and command-boundary behavior without cloud credentials. Hosted smoke tests remain necessary for real provider behavior. |
+
+When a resource-name or state format changes, ship a dual reader that recognizes both the legacy and canonical forms before enabling the exact canonical writer. Keep cleanup ownership checks equally strict for both forms. Remove the legacy reader only after an upgrade test has carried old state through the new release, hosted cleanup has left no owned resources behind, and rollback expectations are documented. A format migration is not safely proven by a fresh apply alone.
+
 ## Ownership boundary
 
 | cloud-compose owns | Template, sitectl, or operator owns |
