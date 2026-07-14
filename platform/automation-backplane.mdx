@@ -51,6 +51,27 @@ This gives the platform three operational boundaries:
 
 In the target managed deployment, the request-serving API and `api-worker` will deploy as separate Cloud Run services. The API service will use `/health` for liveness and `/ready` as the startup gate. The worker requires at least one instance and always-allocated CPU because it owns polling loops; moving those loops back into the API process would reintroduce request-path coupling. Do not use these settings as a rollout instruction until the status record identifies the released worker artifact and migration runbook.
 
+### Preview worker ownership state machine
+
+The worker migration has one scheduler owner at a time. Its target state machine is:
+
+| State | Sole scheduler owner | Gate to the next state |
+| --- | --- | --- |
+| Identity bootstrap | Legacy Compose worker | Create the dedicated worker identity, bind API and customer Vault to its immutable identity, and verify the live Vault token lifetime while the Cloud Run worker remains absent. |
+| Prepared handoff | Legacy Compose worker | Produce and review a complete saved Terraform plan, then install the marker-aware, fail-closed Compose override. |
+| Cloud Run ownership | Cloud Run `api-worker` | Stop and remove the legacy worker, prove no labeled worker container remains, apply the exact saved plan, and remove the temporary identity bridge. The persistent VM marker keeps the Compose worker disabled across reboots and ordinary deployments. |
+| Verified rollback | Legacy Compose worker | Disable Cloud Run deletion protection, restore the temporary identity bridge while removing Cloud Run, then start and verify exactly one legacy worker before removing the handoff marker. |
+
+The forward transition may briefly have no scheduler, but it must never run both schedulers. A failed transition stays with the previous owner or in the fail-closed handoff state. Exact variables, commands, canaries, and the two-apply rollback procedure belong in the API repository's `iac/libops-api/README.md` deployment runbook; this architecture page is not a substitute for it.
+
+Cloud Run service and revision maxima remain one, the service minimum remains one, and CPU remains allocated while idle. Those settings are the primary singleton boundary. A MariaDB advisory lock adds handoff defense in depth: the target owner observes a quiet window before starting jobs, checks leadership on a bounded interval, and becomes unready and unhealthy, cancels work, and exits through a bounded drain if it loses the lock. The lock is not an external fencing token, so every job must still be idempotent across termination, replay, and a lost response.
+
+### Preview worker network and probe invariants
+
+The worker is private and has no public invoker. It uses Direct VPC **egress** with `PRIVATE_RANGES_ONLY` to reach the API production database on its private address; Cloud Run services do not gain Direct VPC ingress. The attachment stays on the network and regional subnet that route to that database, the subnet is `/26` or larger, and the VM firewall admits the whole ephemeral source subnet only on the database port and only to the database VM target. Public Vault and Google API calls continue over normal Cloud Run egress; changing to `ALL_TRAFFIC` would require a separately designed and tested NAT contract.
+
+The Vault sidecar must complete its first secret render before the worker starts. The worker startup probe calls `/ready`, whose bounded startup budget covers Direct VPC attachment and database retry and then verifies the database, authenticated Vault access, and leader-or-standby coordination state. `/health` remains process-only during a transient dependency outage but fails on terminal leadership loss or drain. These rules specialize the broader [managed Direct VPC contract](/platform/security-operations#private-vm-delivery-on-google-cloud); self-hosted power-management networking has a different startup exception documented in the [cloud-compose boundary](/infrastructure/cloud-compose#google-cloud-prerequisites).
+
 Vault OIDC discovery and JWKS validation follow the same last-known-good rule. Successful live JWKS refreshes write a local cache containing the issuer, JWKS URL, keys, and cache time. If Vault or JWKS discovery is briefly unavailable during startup, the API can start from that cache for the configured trust window and reports `degraded_last_known_good` in `/ready`. After the trust window expires, readiness fails and cached keys are no longer used.
 
 Workers are expected to be idempotent. Duplicate webhook deliveries, Pub/Sub retries, worker restarts, and replayed events must converge through dedupe keys, leases, unique constraints, or upserts rather than process-local memory.
