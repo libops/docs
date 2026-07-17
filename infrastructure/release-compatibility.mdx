@@ -22,9 +22,9 @@ Publish and consume changes in this order:
 | 3 | Core `sitectl` | CLI and plugin SDK contract tests pass; package artifacts are published |
 | 4 | Application plugins | Each plugin is built against the required core; rollout and component tests pass |
 | 5 | Dependent plugins | Included plugins are published first; Drupal precedes ISLE when ISLE requires the newer Drupal contract |
-| 6 | Reusable Terraform dependencies and support images | Required module commits are merged; support images such as PPB are released by immutable digest and signed by the expected publisher identity; validation, mock and image tests, and release CI pass |
+| 6 | Reusable Terraform dependencies and support images | Required module commits are merged; support images such as PPB are released by immutable digest and their keyless signatures verify against the expected protected workflow identity; validation, mock and image tests, and release CI pass |
 | 7 | `cloud-compose` | The referenced Terraform modules, support-image digests, sitectl package set, and templates are available; provider, bootstrap, and hosted smoke tests pass |
-| 8 | Managed API and control plane | Its pinned infrastructure contract and support images resolve; managed images come from CI-passed commits and have verified signatures; Go, Terraform contract, mock-plan, and hosted managed-path checks pass |
+| 8 | Managed API and control plane | Its pinned infrastructure contract and support images resolve; managed image digests come from the expected CI-passed commits and their signatures verify against the protected publisher identity; Go, Terraform contract, mock-plan, and hosted managed-path checks pass |
 | 9 | Public documentation | Every referenced image, package, template, Terraform dependency, cloud-compose tag, and managed integration is live; generated command references are pinned to the released commit set; docs validation and link checks pass |
 
 A layer may be unchanged in a release. The ordering still matters whenever its contract changes.
@@ -34,17 +34,146 @@ dependency. When it adopts a new core SDK helper, update and test it only after
 that core release is live, and publish its contributor documentation after the
 scaffold branch is merged.
 
+## Container registry publication contract
+
+LibOps uses GHCR as the general registry copy. Add a GAR copy when Cloud Run or
+another GCP runtime consumes the image. The Buildkit application-image matrix
+is a separate shared publication path: it publishes the same versioned
+multi-platform manifest to Docker Hub and GHCR because Compose templates still
+use the readable `libops/...` Docker Hub names. It does not need GAR merely
+because another LibOps image does.
+
+Support-image and managed-image repositories should be thin callers of the
+pinned reusable `libops/.github` build workflow. They select the Dockerfile,
+context, build arguments, image name, and registry destinations, while the
+reusable workflow owns registry authentication, platform tags, vulnerability
+scanning when requested, digest handoff, multi-platform manifest assembly, and
+publication. In the verified path, each native image is built once, scanned
+before publication, then pushed to GHCR and optional GAR. The workflow records
+each registry's push-reported platform digest and assembles the final manifest
+from digest references, never by rereading mutable platform tags.
+Cross-registry writes cannot be atomic, so callers use immutable commit or
+release tags and safely rerun a failed publication. When signing is enabled,
+the workflow keylessly signs each registry's final digest and immediately
+verifies the signature against the pinned reusable-workflow identity. The
+workflow does not currently create an OCI provenance attestation, so a
+signature proves the configured publisher identity and exact digest, not a
+complete build-material statement. A repository may still coordinate release
+dispatch or run its own application tests; it should not copy the registry
+login and image-publishing implementation.
+
+Public Cloud Run support images use the GitHub workload-identity pool in
+`libops-images` and its shared `github@libops-images` publisher. The publisher
+receives short-lived credentials and GAR-repository-level writer grants; no
+service-account key belongs in GitHub. Treat adding a GitHub repository to that
+publisher as a trust-boundary change: the shared identity can publish to every
+registry granted to that account. A private GCP project may provide its own
+workload-identity provider and publisher account to the same reusable workflow
+instead of creating a repository-local publishing implementation.
+
+The `api/iac/libops-images` root owns the public pool, verified and legacy
+provider conditions, the shared publisher service account, repository
+configuration, and GAR writer grant. A verified publisher contract binds the
+repository, protected-main or explicitly allowed release-tag ref, caller
+workflow, and immutable reusable publisher workflow commit. The legacy
+provider is a temporary repository-only migration path. Inspect the reviewed
+Terraform revision and the applied IAM state for the exact allowlist rather
+than copying one from this page.
+
+A caller repository's `GCLOUD_OIDC_POOL` and `GSA` values only select the
+centrally owned provider and service account; they do not create or own a
+second publisher. LibOps stores those identifiers as Actions secrets for
+configuration distribution convenience, but they are not credentials or a
+security boundary. Apply and review the central IAM change before enabling a
+new public caller. Private API-project GAR publication remains in the API
+project's infrastructure and must not be added to the public publisher's
+authority. A merged Terraform change is desired state, not evidence that the
+central IAM apply completed. Record the successful apply and a
+protected-workflow GAR publication canary separately before relying on a new
+trust condition, writer grant, or caller revocation.
+
+For a verified caller, WIF rejects another repository, ref, caller workflow, or
+reusable-workflow revision before it can impersonate the shared account. That
+does not make the caller workflow's contents immutable: repository write and
+workflow governance, protected main, the reusable workflow's exact-main guard,
+digest pinning, and post-publication Cosign claim verification remain separate
+controls. The legacy provider enforces only its repository allowlist; any
+runnable workflow in one of those repositories that can request
+`id-token: write` can still satisfy that older condition. Manual dispatch or
+tag publication remains possible where a caller exposes it and must be reviewed
+as a privileged publication, not described as something Actions-secret access
+prevented.
+
+Downstream forks do not inherit LibOps publisher authority. Fork owners should
+keep GHCR as the general distribution channel, create their own WIF trust and
+GAR repository only when they deploy to GCP, and pin the reusable workflow to a
+reviewed commit. Pull-request jobs build and test without publisher credentials.
+Protected-branch or release jobs publish, and deployment records consume the
+resulting digest rather than trusting a movable tag.
+
+Do not weaken branch protection when this split changes a historical reusable
+job name. The shared, credential-free `pr-status.yaml` workflow can preserve a
+required `run / merge` check: the caller's `run` job depends directly on every
+real PR lint, test, and native-image scan, runs with `always()`, passes the
+complete `toJSON(needs)` object, and pins the reusable gate by full commit. The
+gate fails for malformed, empty, failed, cancelled, or skipped dependencies and
+has no checkout, package, OIDC, secret, or registry permission. The main-only
+publisher remains a separate caller job.
+
+The target API repository publication gives every built image a
+GHCR copy. Images consumed by LibOps GCP runtimes also receive a GAR copy:
+`api` (also tagged as `dash`), `api-vault-agent`, and `control-plane` use the
+private API-project repository; `terraform-runner`, `gcp-vm-ip-controller`,
+`controller-ingress`, and `site-controller` use shared public GAR; and
+`cloudflare-ingress-router` uses the separate shared-infrastructure GAR
+repository. The API workflow does not publish `api-init` or `vault-server`.
+A successful publication uses one
+`sha-<40-character-commit>-run-<workflow-run-id>-attempt-<workflow-attempt>`
+selector across its set, but deployment resolves each name independently and
+passes only digest references.
+
+Before this API publication path can be promoted, the admin plugin must resolve
+every selected API bundle image and the independently released Vault server to
+fail-closed GAR digest references. The VM must record the canonical API
+selector and detach its Compose checkout at the embedded commit before
+starting services. Only an explicitly configured development branch or
+`local` may follow a branch pull. Local Compose build fallbacks remain useful
+for development; they are not a production substitute for this verified source
+and image handoff. Publish the exact commands and current image-to-variable
+mapping in the sitectl documentation only when that resolver is released; an
+architecture page must not act as an unreleased CLI reference.
+
+Keep similarly named images in their actual ownership boundary. The following
+organization Vault runtime is a target promotion contract until the
+[current release status](/infrastructure/current-release-status) records the
+complete released set. It selects three independent images:
+
+- `vault-server` is built by `terraform-vault-cloudrun` from the exact verified
+  upstream Vault source release with a patched Go toolchain. Its protected-main
+  image workflow writes the application-versioned release to GHCR and public
+  GAR; Terraform pins that public GAR digest.
+- `vault-init` and `vault-proxy` are independently versioned public support
+  repositories. Each publishes its reviewed release to GHCR and public GAR
+  through the shared `libops-images` publisher, and `sitectl-admin` resolves
+  each selected semantic release to its own immutable GAR digest.
+
+Do not advance these three inputs under one shared tag. The API repository's
+private `api-vault-agent` image is a separate API-side helper and is not the
+organization Vault server or initializer. Public support images must not borrow
+the private API publisher identity, and private managed images must not expand
+the public publisher's authority.
+
 ## Managed artifact promotion gates
 
-A digest fixes image bytes, but it does not prove which repository or workflow produced them. Managed request-path images add a provenance gate to the dependency order:
+A digest fixes image bytes, but it does not by itself prove which repository or workflow produced them. Managed request-path images therefore add a publisher-evidence gate to the dependency order:
 
 1. Pull-request CI builds, tests, and scans the proposed image without production publisher credentials.
-2. A publisher runs only after the repository's required CI succeeds for the exact commit on the protected primary branch. It publishes that commit's image, records its digest, and signs the digest with short-lived workload identity.
-3. Before changing Terraform, the release operator verifies the signature against the expected repository and workflow identity, not merely any valid keyless signature.
+2. Release policy permits stable publication only after the repository's required CI succeeds for the exact commit on the protected primary branch. The publisher builds and scans that exact commit, obtains a short-lived registry credential through Workload Identity Federation, records each published digest, and keylessly signs the final manifest in each registry. For a caller on the `verified-publisher` provider, the WIF condition requires the exact repository, protected-main ref, caller workflow, and pinned reusable publisher revision. A caller still on the temporary legacy provider receives only repository-level WIF enforcement; GitHub workflow guards and post-publication verification must enforce the remaining claims until that caller migrates.
+3. Before changing Terraform, the release operator verifies the successful GitHub run, exact reusable-workflow commit, caller repository, ref, commit SHA, caller-workflow annotation, WIF trust condition, registry digest, and Cosign certificate identity. API-owned images require the `libops/api/.github/workflows/images.yml@refs/heads/main` annotation. Tag-published Vault initializer and proxy images require their `goreleaser.yaml@refs/tags/<version>` annotation; resolve annotated tag objects to the final commit before comparing the signature claim. The separately built Vault server uses its protected-main image workflow instead. The current publisher does not create an OCI provenance attestation, so documentation and promotion records must not claim one.
 4. Terraform pins the verified digest. A readable tag may accompany it, but a tag is not the deployed identity.
 5. The dependent module or control plane runs validation and its hosted end-to-end path with those exact references before promotion.
 
-For the managed site path, publish and verify the PPB support image before cloud-compose or the vendored managed runtime points at it. Publish and verify the shared router image before shared edge Terraform pins it. The managed API and control plane move only after both infrastructure dependency sets are available and green. A failed smoke test is fixed at the producing layer and republished; it is not bypassed by pointing consumers at a moving tag.
+For the managed site path, publish and verify the PPB support image before cloud-compose or the vendored managed runtime points at it. Publish and verify the shared router image before shared edge Terraform pins it. Here, verification means both matching the digest to the protected CI run and validating the keyless signature against the pinned reusable publisher identity. The managed API and control plane move only after both infrastructure dependency sets are available and green. A failed smoke test is fixed at the producing layer and republished; it is not bypassed by pointing consumers at a moving tag.
 
 ## Images and templates
 
@@ -69,11 +198,22 @@ A deployment package manifest should record one reviewed version per package:
 
 Use the [sitectl installation guide](https://sitectl.libops.io/install) for current minimum versions and dependency behavior. Use the [contributor release guide](https://sitectl.libops.io/contributing/development) for the current publisher sequence.
 
+The [released self-hosted application baseline](/templates/compose-projects#released-compatibility-baseline)
+records the exact core, application-plugin, template, and base-image references
+selected by cloud-compose `1.5.0`. The managed-platform `sitectl-libops`
+package and the contributor-only `sitectl-app-tmpl` scaffold are separate
+release surfaces; neither should be inserted into every application preset.
+
+The ISLE v1 set in that catalog uses template `v1.1.0` and core, Drupal, and
+ISLE packages at `v1.0.0`. Its reviewed application environment supplies
+`ISLANDORA_TAG=6.3.19`; an explicit caller value overrides the catalog default
+and becomes part of the caller's compatibility and rollback record.
+
 Cloud-compose releases that expose `runtime.sitectl.package_versions` can pin each installed package independently. A legacy shared `version` value is only a fallback for packages without an override. Releases with only one shared version cannot safely represent independently versioned plugins; do not claim reproducible package pins until the selected module actually exposes and records the per-package map.
 
 Production should not follow a package manager's `latest` channel without a reviewed compatibility record.
 
-The current Linux package publisher rebuilds APT and RPM metadata from the current release artifacts and does not retain older versions in the package repository. A per-package version map is therefore reproducible only while every named package remains downloadable. For a long-lived production rollback, retain a repository snapshot or archive the matching GitHub release packages and `checksums.txt` in controlled storage. A version string without a retained artifact is not a recovery plan.
+The rolling Linux package channel rebuilds APT and RPM metadata from release artifacts. It may retain older packages, but retention is not an immutable API and maintenance may prune them. A per-package version map is therefore reproducible only while every named package remains downloadable. For a long-lived production rollback, retain a repository snapshot or archive the matching GitHub release packages and `checksums.txt` in controlled storage. A version string without a retained artifact is not a recovery plan.
 
 ## Compatibility record
 
@@ -139,9 +279,29 @@ Before applying:
 - inspect replacements, deletes, IAM changes, firewall exposure, disk changes, and user-data changes;
 - back up state and data independently.
 
-Moving from a root provider dispatcher to `providers/gcp`, `providers/do`, or `providers/linode` can change Terraform resource addresses even when the real resources stay the same. Use release-provided `moved` blocks or explicit, reviewed `terraform state mv` operations. Never accept destroy-and-recreate for a data-bearing deployment merely to change the module address.
+Cloud-compose `1.3.0` changes the repository root from a multi-provider
+dispatcher to a GCP-only compatibility entrypoint while preserving the
+historical indexed GCP address. Existing GCP callers can stay on that root and
+avoid both unrelated providers and a state move. Moving GCP to `providers/gcp`,
+or moving a 1.x DigitalOcean or Linode caller to its required
+`providers/do` or `providers/linode` entrypoint, changes module addresses even
+when the real resources stay the same. Use the release-documented caller-side
+`moved` blocks or explicit, reviewed `terraform state mv` operations. Never
+accept destroy-and-recreate for a data-bearing deployment merely to change the
+module address.
 
 When a selected modular release changes GCP power management, privileged internal services, or automatic updates to explicit opt-in, review every removed IAM and service resource. Cloud-init and identity changes can replace a VM or boot disk; DigitalOcean and Linode user-data changes can also replace instances. Review persistent-disk survival and public-IP/DNS effects, not only the application diff. Follow the migration checklist in the [cloud-compose deployment boundary](/infrastructure/cloud-compose).
+
+The managed API root uses the stable `api-production-boot` name for a new boot
+disk. An older imported deployment can still have the hash-derived name created
+by its previous cloud-compose path:
+`api-production-boot-<32-lowercase-hex>`. The supported deployment wrapper
+queries the configured project and zone, passes exactly one stable or legacy
+match through `api_production_boot_disk_name`, and fails if several matches make
+the choice ambiguous. A direct Terraform caller must inspect and pass the exact
+existing name before import. Leave the override empty only when no matching disk
+exists and the stack is new. Reject an unexpected boot-disk or VM replacement;
+changing this input later is a replacement decision, not an in-place rename.
 
 The Ansible and Salt adapters are dedicated-host, first-install bootstrap paths. Updating their input files does not by itself prove that the application lifecycle reran; use their explicit force-bootstrap control only in a planned maintenance window. They do not support cloud-compose-managed Vault Agent configuration.
 

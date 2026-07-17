@@ -10,7 +10,7 @@ For the full self-hosted checklist, including Terraform state, cloud IAM, secret
 </Info>
 
 <Warning>
-The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production migration or DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
+The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production migration or DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
 </Warning>
 
 ## Managed-platform defaults
@@ -23,7 +23,7 @@ The shared Cloud Run router and private per-site PPB path below is a **target ma
     Managed platform secrets are stored and scoped as platform resources rather than committed to repositories or copied into unmanaged environment files.
   </Card>
   <Card title="Runtime isolation" icon="server">
-    Each managed production site runs on a dedicated virtual machine. Non-production environments use a separate runtime boundary.
+    Production sites use production-only runtime VMs, while non-production sites use separate runtime VMs. A role-matched runtime can host at most seven active sites.
   </Card>
 </CardGroup>
 
@@ -77,36 +77,178 @@ The router must authenticate to each private PPB with a Google ID token for one 
 
 ## Private VM delivery on Google Cloud
 
-In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. The same pattern carries authenticated controller requests to the private rollout endpoint. Cloud Run services do not support Direct VPC ingress: external traffic still enters the declared Cloudflare, load-balancer, and Cloud Run path.
+In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. A separate Direct VPC attachment carries authenticated controller requests to the private rollout endpoint. Cloud Run services and jobs do not support Direct VPC ingress: external traffic still enters the declared Cloudflare, load-balancer, and Cloud Run path. Worker-pool ingress is a separate capability that this design does not use.
 
 The target deployment sets Cloud Run egress to `PRIVATE_RANGES_ONLY`. Only traffic to private destination ranges uses the VPC attachment; other outbound traffic follows normal Cloud Run egress and does not traverse this VPC or its Cloud NAT. Changing the service to `ALL_TRAFFIC` creates a different routing, NAT, cost, and startup-latency contract and requires a separate review and hosted test.
 
-Direct VPC revision addresses are ephemeral, so the target VM firewall cannot safely allow individual addresses or use a Cloud Run service identity as the ingress source. It must allow the complete regional subnet CIDR on only the required application or controller ports and target the runtime VM service account. Every workload attached to that subnet is consequently inside the source trust zone.
+Direct VPC revision addresses are ephemeral, so the target VM firewall cannot
+safely allow individual addresses or use a Cloud Run service identity as the
+ingress source. Keep the two trust zones distinct:
 
-The target managed project allocates a `/20` subnet in each selected region. A self-hosted deployment must use at least `/26`, but that minimum may be too small once existing allocations, Cloud Run's `/28` allocation blocks, roughly two addresses per steady-state service instance, and overlapping revisions are counted. The service, VM, and subnet must use compatible regions, and the network MTU remains Cloud Run's default `1460`.
+- per-site PPB services attach to the runtime-specific serverless `/22`; that
+  whole `/22` may reach only the runtime's declared application ports, with the
+  runtime VM service account as firewall target;
+- controller-ingress attaches to `primary-<region>`; that primary subnet may
+  reach only TCP 8080 on the same VM target, and the rollout endpoint still
+  requires the runtime-audience ID token.
+
+Every workload attached to either subnet is inside that subnet's source trust
+zone. Never authorize the primary subnet to application ports or the PPB `/22`
+to the controller port.
+
+The target managed project gives every runtime a dedicated RFC6598 `/22`. Its
+persisted project-wide slot, from 0 through 255, indexes
+`cidrsubnet("100.64.0.0/10", 12, slot)`; the CIDR therefore does not change when
+a runtime moves regions. Slots are unique within a project and are never
+recycled. The VM and controller primary `/20`s use a separate append-only
+region registry in
+`172.16.0.0/12`; migration discovers and preserves an existing conventional
+primary subnet, including a legacy `10.128.0.0/9` assignment, rather than
+renumbering it because map order changed.
+
+A runtime accepts at most seven site PPB services. With five instances per
+service, steady-state 2X IP consumption rounds each service to a `/28`
+allocation block. An old/new overlap can require two blocks per service, and a
+rapid third revision or rollback can temporarily retain a third. A `/24` has
+only 16 such blocks and can therefore exhaust at the seven-site limit. The
+managed `/22` has 64 blocks: the ordinary two-generation overlap uses at most
+14 and a retained third generation uses at most 21, leaving substantial
+headroom for rollout timing and allocation lag. This is not permission for
+unbounded rapid revision creation; stop a rollout and let retained addresses
+drain if available capacity falls unexpectedly.
+
+Terraform rejects an eighth active site on one runtime. The API returns a
+capacity error when a caller explicitly selects a full runtime; default or
+role-based placement instead creates a slot-stable overflow runtime and assigns
+the new site there. Upgrade migrations also preflight the existing database and
+stop before infrastructure changes if a non-deleted runtime already owns more
+than seven non-deleted sites. Correct that inventory with an application-aware
+move or retire genuinely deleted sites; changing only a foreign key does not
+move application data or traffic. Every assigned active site must also have a
+unique TCP port in the range `1` through `65535` within its runtime.
+
+A self-hosted deployment must use at least `/26`, but that minimum may be too
+small once existing allocations, Cloud Run's `/28` allocation blocks, roughly
+two addresses per steady-state service instance, and overlapping revisions are
+counted. The service, VM, and subnet must use compatible regions, and the
+network MTU remains Cloud Run's default `1460`.
 
 Cloud Run can retain revision addresses for up to 20 minutes after scale-down. After detaching or deleting the last Cloud Run user, allow one to two hours before deleting the subnet; reserved serverless addresses cannot be removed manually.
 
+The target control plane persists each runtime's region and immutable slot and
+never recycles that network identity. A successful first-phase apply that
+removes every Cloud Run consumer records the detach time; a failed or targeted
+apply does not start the clock. A later complete apply may delete the subnet
+only after the persisted detach is at least two hours old. An active runtime
+with no sites can recreate the same subnet and slot later. Only an explicitly
+deleted runtime records terminal destruction, and that identity cannot be
+reattached. Project deletion uses the same detach, wait, and destroy phases and
+does not decommission the owning project until every runtime subnet has reached
+terminal destruction.
+
+Deletion is a terminal state transition, not an ordinary update. The API and
+retained database guards reject reactivation of a deleted organization,
+project, runtime, or site and reject creating a live child beneath a terminal
+parent. A project cannot be tombstoned while it still owns an active site. When
+the project affects a paid subscription, the Stripe item change and a
+per-project retirement marker must complete idempotently before the local
+tombstone and outbox event commit; a Stripe error fails closed. The final
+successful `decommission=true` project apply records
+`infrastructure_decommissioned_at`.
+
+Organization deletion deliberately does not cascade through projects. It is
+rejected until there are no active projects, every retained deleted project has
+that durable infrastructure-decommissioned timestamp, and the local Stripe
+subscription is absent, canceled, or `incomplete_expired`. Only then may the
+organization's reverse dependency graph remove edge, Vault, organization, and
+foundation state. These preconditions let retries resume a known phase instead
+of skipping the Direct VPC grace period, abandoning billable resources, or
+resurrecting a terminal ancestor.
+
 ### Cold starts and timeout ownership
 
-Direct VPC attachment can delay new connections for a minute or more. An ordinary Cloud Run service should use a bounded, retrying startup probe against a representative egress destination before accepting traffic. In the target design, PPB cannot use the sleeping application VM as that probe target: PPB must accept the first request in order to start the VM, so requiring the VM to be reachable at startup would deadlock the wake path.
+Direct VPC attachment can delay new connections for a minute or more. An ordinary Cloud Run service should use a bounded, retrying startup probe against a representative egress destination before accepting traffic. PPB is a deliberate exception: it cannot probe the sleeping application VM because it must accept a request before it can start that VM. Its startup probe is therefore process-only, while release smoke tests prove the real Direct VPC connection and wake path.
 
-The target managed exception uses bounded retries inside that first request. Its contract allocates PPB 45 seconds to power on the VM and 35 seconds to establish the backend connection. PPB must not replay an application request after a connection succeeds. If a controlled failure occurs before dispatch, it may return `503` with `Retry-After`; the client decides whether its operation is safe to retry. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
-
-Every outer deadline leaves room for the inner operation to finish:
+Two timeout contracts apply, and they must not be collapsed into one chain. The direct public Cloud Run PPB endpoint can hold one request through the complete tested wake budget:
 
 ```text
-PPB power on + backend dial     45 + 35 < 100 seconds
-Router lookup + origin proxy    5 + 100 < 110 seconds
-Router Cloud Run request             110 < 120 seconds
-Cloudflare non-Enterprise read ceiling          120 seconds
+PPB power-on budget       240 seconds
+PPB backend-dial budget   300 seconds
+Cloud Run request ceiling 600 seconds
+
+240 + 300 < 600
 ```
 
-The target chain is summarized as `45 + 35 < 100 < 110 < 120`, with the separate five-second route lookup also fitting inside the 110-second router request. Its Terraform contract must reject equality or inversion at any boundary. Do not raise the outer value above 120 unless the Cloudflare zone has an Enterprise timeout and every inner deadline and test is changed as one contract.
+PPB does not replay an application request after a connection succeeds. The hosted direct-path smoke test sends exactly one request, proves that the VM reaches `RUNNING`, follows any changed ephemeral VM address, and verifies the application through the host after the response.
+
+The non-Enterprise Cloudflare path cannot contain that 540-second worst case. Its separate outer budgets are:
+
+```text
+Bounded route lookup                    5 seconds
+Router origin request                100 seconds
+Router Cloud Run request             110 seconds
+Cloudflare non-Enterprise read limit 120 seconds
+
+5 + 100 < 110 < 120
+```
+
+The router's bounded route lookup must also fit before its origin deadline. On a long cold start, the managed path must return a controlled, retryable failure before application dispatch while wake-up work can continue; it must not claim that the first Cloudflare request always reaches the application. A response such as `503` with `Retry-After` lets the client decide whether retrying its operation is safe. The router and PPB must never replay a request whose application dispatch might have started. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
+
+Terraform must reject equality or inversion within each timeout contract. Do not raise the managed outer value above 120 unless the Cloudflare zone has an Enterprise timeout and every router deadline, failure contract, and hosted test is changed together.
 
 ## Vault-backed secrets
 
-The managed platform can scope secrets at organization, project, and site level. Runtime delivery keeps the values outside the site repository.
+The target managed platform can scope secrets at organization, project, and
+site level. Runtime delivery keeps the values outside the site repository.
+
+### Target organization Vault runtime boundary
+
+<Warning>
+This is the promotion contract, not a claim that the aggregate managed Vault
+set is released. The [current release status](/infrastructure/current-release-status)
+must name all three image digests, verified signatures, sitectl-admin resolver,
+and green API/Terraform gates before operators treat this path as available.
+</Warning>
+
+The organization Vault service is a three-image contract with independent
+ownership and release cadence:
+
+| Image | Owner and purpose | Promotion rule |
+| --- | --- | --- |
+| `vault-server` | The `terraform-vault-cloudrun` repository's Cloud Run-compatible Vault server image | Rebuild the exact verified upstream Vault release with the patched toolchain, publish from protected main to GHCR and public GAR, then pin its public GAR digest |
+| `vault-init` | The independent one-shot initializer that seals initialization material into GCS with Cloud KMS | Release independently, publish the reviewed manifest to GHCR and public GAR, and pin the selected semantic release by GAR digest |
+| `vault-proxy` | The independent request boundary that separates explicit public Vault paths from administrator-only paths | Release independently, publish to GHCR and public GAR, and pin its GAR digest separately from both server and initializer |
+
+Do not substitute the API repository's private `api-vault-agent` helper for
+either the Vault server or `vault-init`, and do not advance all three images
+under one shared tag. `sitectl-admin` resolves
+the independently selected initializer and proxy release tags to immutable
+digests before Terraform runs. It follows annotated GitHub tags to the final
+release commit and requires the Cosign caller repository, tag ref, exact
+workflow SHA, and caller-workflow annotation in addition to the pinned shared
+publisher identity. Reconciliation must fail closed when any of the three
+digest-pinned inputs is missing.
+
+The proxy's public route list is an allowlist, not a string prefix list. A
+route is an exact path, a single `*` path segment, or one final `/**` subtree;
+trailing-slash prefixes, partial-segment wildcards, dot segments, and ambiguous
+patterns are rejected. Everything else requires a verified administrator
+identity. The proxy removes its administrator credential and caller-supplied
+forwarding headers before sending a request to Vault, preserves the
+application's Vault authorization header, and returns generic authentication
+or upstream errors without logging bearer-token URLs.
+
+The initializer is a one-shot state transition. Before asking Vault to
+initialize, it verifies that the destination objects are absent and that its
+KMS encrypt/decrypt path works. It also commits and reads back a unique,
+non-secret preflight marker through the same GCS path before making the
+irreversible request; the marker remains because the runtime deliberately has
+no object-delete permission. It uses create-only object writes, retains the
+Vault response until the complete encrypted bundle is durable, and exits
+nonzero on missing, partial, ambiguous, or conflicting state. A response lost
+after Vault commits cannot be reconstructed; the safe behavior is to detect
+that ambiguity, stop, and require recovery rather than overwrite evidence or
+silently report success.
 
 Self-hosted deployments choose and operate their own secret system. GCP deployments can integrate with a consumer-configured Vault GCP IAM role. DigitalOcean, Linode, and on-premises deployments require a consumer-managed authentication method. In every environment:
 
@@ -145,7 +287,7 @@ Self-hosted teams must define the equivalent separation across the cloud account
 
 ## Runtime and data isolation
 
-Managed production workloads run on distinct hosts. That creates a clear compute boundary, but isolation does not replace application security, dependency updates, least privilege, monitoring, or backups.
+Managed production sites run only on production-role runtime hosts, with at most seven active sites sharing one runtime; non-production sites use separate runtime hosts. That creates a clear production/non-production compute boundary, but isolation does not replace application security, dependency updates, least privilege, monitoring, or backups.
 
 Self-hosted deployments should keep these concerns separate:
 

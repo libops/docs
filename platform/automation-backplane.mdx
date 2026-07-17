@@ -8,7 +8,7 @@ LibOps uses GitHub as an important collaboration surface, but the platform shoul
 LibOps is building a webhook-driven automation backplane for events that need to trigger work inside the platform: dependency scanning, CI runner orchestration, deployment follow-up, and repository maintenance.
 
 <Warning>
-The separate request-serving API and `api-worker` Cloud Run deployment described below is a **preview target**, not a released managed topology in the [July 13, 2026 status snapshot](/infrastructure/current-release-status). Process separation in source code or a Compose development stack does not prove that the worker service, identity migration, database path, rollout, and rollback have been promoted in production.
+The separate request-serving API and `api-worker` Cloud Run deployment described below is a **preview target**, not a released managed topology in the [July 17, 2026 status snapshot](/infrastructure/current-release-status). Process separation in source code or a Compose development stack does not prove that the worker service, identity migration, database path, rollout, and rollback have been promoted in production.
 </Warning>
 
 ## GitHub events in LibOps
@@ -68,7 +68,7 @@ Cloud Run service and revision maxima remain one, the service minimum remains on
 
 ### Preview worker network and probe invariants
 
-The worker is private and has no public invoker. It uses Direct VPC **egress** with `PRIVATE_RANGES_ONLY` to reach the API production database on its private address; Cloud Run services do not gain Direct VPC ingress. The attachment stays on the network and regional subnet that route to that database, the subnet is `/26` or larger, and the VM firewall admits the whole ephemeral source subnet only on the database port and only to the database VM target. Public Vault and Google API calls continue over normal Cloud Run egress; changing to `ALL_TRAFFIC` would require a separately designed and tested NAT contract.
+The worker is private and has no public invoker. It uses Direct VPC **egress** with `PRIVATE_RANGES_ONLY` to reach the API production database on its private address; Cloud Run services and jobs do not gain Direct VPC ingress. The attachment stays on the network and regional subnet that route to that database, the subnet is `/26` or larger, and the VM firewall admits the whole ephemeral source subnet only on the database port and only to the database VM target. Public Vault and Google API calls continue over normal Cloud Run egress; changing to `ALL_TRAFFIC` would require a separately designed and tested NAT contract.
 
 The Vault sidecar must complete its first secret render before the worker starts. The worker startup probe calls `/ready`, whose bounded startup budget covers Direct VPC attachment and database retry and then verifies the database, authenticated Vault access, and leader-or-standby coordination state. `/health` remains process-only during a transient dependency outage but fails on terminal leadership loss or drain. These rules specialize the broader [managed Direct VPC contract](/platform/security-operations#private-vm-delivery-on-google-cloud); self-hosted power-management networking has a different startup exception documented in the [cloud-compose boundary](/infrastructure/cloud-compose#google-cloud-prerequisites).
 

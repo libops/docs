@@ -33,6 +33,46 @@ See [Application Image and Template Contract](/templates/app-support) for the im
 
 The create flow clones the standalone template repository. Plugin repositories carry the template contract and application behavior, not an embedded copy of the Compose project.
 
+## Released compatibility baseline
+
+Cloud-compose [`1.5.0`](https://github.com/libops/cloud-compose/releases/tag/1.5.0)
+records the following known-good self-hosted preset. Every row uses
+core [`sitectl` `v1.0.0`](https://github.com/libops/sitectl/releases/tag/v1.0.0),
+the matching application-plugin `v1.0.0`, and its recorded template release.
+The base-image identity shown here is the one declared by that template
+release. Inspect the template's Compose file for its other direct image pins
+and declared component-controlled image selectors.
+
+| Application and template | Application plugin package | Template base image |
+| --- | --- | --- |
+| [ArchivesSpace `v1.0.0`](https://github.com/libops/archivesspace/releases/tag/v1.0.0) | [`sitectl-archivesspace` `v1.0.0`](https://github.com/libops/sitectl-archivesspace/releases/tag/v1.0.0) | `libops/archivesspace:4.2.0@sha256:4082d760cac3fa1c73ee74abf16f83e30560f55a91c5eed8770d365b7df411d3` |
+| [Drupal `v1.0.0`](https://github.com/libops/drupal/releases/tag/v1.0.0) | [`sitectl-drupal` `v1.0.0`](https://github.com/libops/sitectl-drupal/releases/tag/v1.0.0) | `libops/drupal:nginx-1.30.3-php84@sha256:be9c3be9728a06c291bb812d6b0c4b014b207dad47d745c9f1d1ee3d9771b9aa` |
+| [Islandora `v1.1.0`](https://github.com/libops/isle/tree/v1.1.0) | [`sitectl-drupal` `v1.0.0`](https://github.com/libops/sitectl-drupal/releases/tag/v1.0.0) and [`sitectl-isle` `v1.0.0`](https://github.com/libops/sitectl-isle/releases/tag/v1.0.0) | `libops/islandora:nginx-1.30.3-php84@sha256:e9235dc3789d6ba8885849c80888b755d9e60c316e5de8d88bcd5e9d214ecd42` |
+| [Open Journal Systems `v1.0.0`](https://github.com/libops/ojs/releases/tag/v1.0.0) | [`sitectl-ojs` `v1.0.0`](https://github.com/libops/sitectl-ojs/releases/tag/v1.0.0) | `libops/ojs:3.5.0-5-php84@sha256:b97670708fdec9cc63b7c5ba9c96b3db547f3ea3e1658ef01bdeba6400aec090` |
+| [Omeka Classic `v1.0.0`](https://github.com/libops/omeka-classic/releases/tag/v1.0.0) | [`sitectl-omeka-classic` `v1.0.0`](https://github.com/libops/sitectl-omeka-classic/releases/tag/v1.0.0) | `libops/omeka-classic:3.2.1-php84@sha256:b668d895e0334c5367991994f0f4e2165fb932a31b89057721c5669d941965aa` |
+| [Omeka S `v1.0.0`](https://github.com/libops/omeka-s/releases/tag/v1.0.0) | [`sitectl-omeka-s` `v1.0.0`](https://github.com/libops/sitectl-omeka-s/releases/tag/v1.0.0) | `libops/omeka-s:4.2.1-php84@sha256:3c9d1a0558b705235104998d260dfe916b156fed21b8c34ca0aa5e9bd33bfbee` |
+| [WordPress `v1.0.0`](https://github.com/libops/wp/releases/tag/v1.0.0) | [`sitectl-wp` `v1.0.0`](https://github.com/libops/sitectl-wp/releases/tag/v1.0.0) | `libops/wp:nginx-1.30.3-php84@sha256:f98f7c1efcb7a424e5f3f5daedfefa23406de42222aaa6c0c4aacfe7875e5922` |
+
+The ISLE preset uses template `v1.1.0` with core `sitectl`, `sitectl-drupal`,
+and `sitectl-isle` at `v1.0.0`. It also supplies `ISLANDORA_TAG=6.3.19` through
+the template catalog so the MergePDF service has its minimum compatible
+upstream image selector. An explicit `runtime.extra_env.ISLANDORA_TAG` value
+wins over that default; record and test any such override as part of the
+deployment compatibility set.
+
+ArchivesSpace, OJS, Omeka Classic, and Omeka S base tags name the bundled
+upstream application release. Drupal, Islandora, and WordPress tags name the
+runtime because their Composer lockfiles in the template own the application
+tree. The tag communicates intent; the digest fixes the bytes.
+
+This baseline proves the reviewed template/package selection and the hosted
+release gates attached to cloud-compose `1.5.0`. It does not claim that every
+application/provider pairing ran as one Cartesian test matrix. Preserve a
+deployment-specific record of the exact template commit, all direct image
+digests, provider lockfile, and the smoke or upgrade path your site actually
+ran. The managed-platform [`sitectl-libops` `v1.3.0`](https://github.com/libops/sitectl-libops/releases/tag/v1.3.0)
+plugin is intentionally outside these self-hosted application presets.
+
 ## Islandora components
 
 Islandora has architectural choices that do not belong in separate lifecycle plugins:
