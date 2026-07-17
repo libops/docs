@@ -131,13 +131,15 @@ image is not built or published by the API workflow.
 
 The Terraform runner has a separate provider-mirror build path so one large
 provider build does not hide which provider failed or exhaust one native
-runner. It divides the pinned Terraform providers into three lanes:
+runner. It gives every pinned Terraform provider its own lane:
 
 | Provider lane | Contents |
 | --- | --- |
 | `google` | Google provider |
 | `google-beta` | Google Beta provider |
-| `auxiliary` | Vault, Cloudflare, and Time providers |
+| `vault` | Vault provider |
+| `cloudflare` | Cloudflare provider |
+| `time` | Time provider |
 
 On a pull request, each lane is built and scanned separately for native
 `linux/amd64` and `linux/arm64`. The jobs do not receive package, GAR, or OIDC
@@ -151,12 +153,14 @@ These artifacts are an internal handoff between credential-free PR jobs, not
 published packages or a release channel.
 
 After required CI succeeds for the exact current `main` commit, the protected
-publisher builds the same three multi-platform lanes. Their intermediate
+publisher builds the same five multi-platform lanes. Their intermediate
 images are GHCR-only, scanned and keylessly signed build products named
 `terraform-providers-google`, `terraform-providers-google-beta`, and
-`terraform-providers-auxiliary`. The workflow uses the stable
+the corresponding `terraform-providers-vault`,
+`terraform-providers-cloudflare`, and `terraform-providers-time` packages. The
+workflow uses the stable
 `sha-<40-character-commit>-run-<workflow-run-id>-provider` selector for those
-three intermediates. Before building the final runner, it resolves each
+five intermediates. Before building the final runner, it resolves each
 intermediate to an immutable digest, requires exactly the expected amd64 and
 arm64 manifests and distinct digests, verifies each keyless signature against
 the pinned shared publisher identity, and confirms that the selected commit is
