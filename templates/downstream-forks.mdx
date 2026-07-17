@@ -7,6 +7,24 @@ Once an institution forks a LibOps template, that repository becomes the site's 
 
 The goal is a fork that remains understandable: local code is explicit, generated state is excluded, production changes are reviewable, and upstream improvements arrive as pull requests instead of server edits.
 
+## Preserve the creation record
+
+When `sitectl` creates a project, it removes the template's Git history,
+initializes the downstream repository, and writes
+`.libops/template.lock.yaml`. Commit that generated lock with the fork. Its
+versioned envelope records the source template repository and full commit, the
+core and plugin build identities when available, the declared
+component-defaults revision, and the digest of the template contract.
+
+The lock is provenance, not an attestation or an automatic update channel. A
+source template must not ship its own downstream lock, and a fork must not edit
+the lock to make an unreviewed source appear trusted. Use it when comparing a
+future template release and keep the reviewed downstream merge commit as the
+actual adoption record. Component operations may consult the recorded defaults
+revision, but they still change only fields owned by the component contract;
+`sitectl converge` repairs drift in those fields and does not merge a template
+release or overwrite unrelated institutional policy.
+
 ## What belongs in the fork
 
 | Concern | Supported location |

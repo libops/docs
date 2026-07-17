@@ -31,7 +31,7 @@ When access should be limited, attach it at the narrowest level that matches the
 
 ## Environments And Runtime Hosts
 
-A site record represents one running environment for a codebase: production, staging, review, development, or another named environment. A project can have more than one runtime host. In the managed platform, production is isolated on its own runtime, while non-production environments for the same project can share a runtime host.
+A site record represents one running environment for a codebase: production, staging, review, development, or another named environment. A project can have more than one runtime host. Production sites use production-only runtimes, while non-production sites use separate ephemeral or custom runtimes. Default and role-based placement assigns no more than seven compatible sites to one runtime and creates a slot-stable overflow runtime when the current one is full; explicitly selecting a full runtime returns a capacity error.
 
 Terraform and cloud-compose create the runtime host, install the base operating-system dependencies, and place the initial Compose project scaffolding on the VM. They do not manage day-to-day state inside the VM. The site reconciler running on the VM handles operational state such as SSH users, allowed keys, secrets files, firewall rules, and GitHub-triggered deployments.
 

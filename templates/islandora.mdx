@@ -48,6 +48,44 @@ Triplet is managed by the ISLE plugin's IIIF components. It is not a separate si
 
 The detailed choices and current flags live in the [ISLE plugin documentation](https://sitectl.libops.io/plugins/isle) and [component guide](https://sitectl.libops.io/components).
 
+The independently released v1 set pairs
+[`libops/isle` `v1.1.0`](https://github.com/libops/isle/tree/v1.1.0) with core
+`sitectl`, `sitectl-drupal`, and
+[`sitectl-isle`](https://github.com/libops/sitectl-isle/releases/tag/v1.0.0)
+at `v1.0.0`. The template hosted smoke is green, and the ISLE plugin is
+published as GitHub binary archives, a Homebrew formula, and Debian and RPM
+packages. Cloud-compose `1.5.0` records this set as its released ISLE preset
+and supplies `ISLANDORA_TAG=6.3.19` as the reviewed default for
+component-controlled upstream images. A downstream override remains explicit
+and must be included in that deployment's compatibility record.
+
+## Cross-domain feature bundles
+
+Some Islandora features cannot be represented by one Compose service or one
+Drupal module. The ISLE v1 component model treats them as feature bundles: one
+reviewable unit can own a bounded set of Compose fields, Composer requirements,
+and Drupal configuration-sync files. This lets an existing downstream install
+adopt a reusable feature without replacing its whole template.
+
+The first bundles are:
+
+| Bundle | Owned contract | Compatibility preflight |
+| --- | --- | --- |
+| MergePDF | The `mergepdf` Compose service, its required certificate and JWT secrets, the shared Islandora image tag, and the paged-content aggregated-PDF Drupal action | An upstream `islandora/alpaca` image must be `6.3.19` or newer; the plugin also recognizes the reviewed compatible LibOps Alpaca image contract |
+| hOCR search | The two Composer packages, module registration, Solr search configuration, derivative action, IIIF manifest fields, and hOCR search view | An upstream `islandora/solr` image must be `4.2.1` or newer; the plugin also recognizes the reviewed compatible LibOps Solr image contract |
+
+The matching v1 template contract declares both bundles enabled by default.
+That default is creation metadata, not permission to change an existing fork
+without review.
+
+Enabling a bundle preflights all required files, services, secrets, image
+compatibility, and site-specific inputs before writing any file. Disabling it
+removes only fields and files in that bundle's ownership contract; retained
+derivatives or indexed data remain an operator recovery and retention decision.
+After either transition, inspect and commit the complete Compose, Composer, and
+Drupal configuration diff. A bundle does not merge an upstream template or
+overwrite unrelated institutional policy.
+
 ## Choose an operating path
 
 <CardGroup cols={3}>

@@ -6,7 +6,7 @@ description: "Prepare a public hostname after managed ingress is enabled for a L
 The target LibOps managed-ingress service can serve customer-owned domains through a shared Cloudflare path. You add the hostname to the site in LibOps, then point it at the LibOps SaaS fallback hostname only after LibOps confirms that the managed ingress release is enabled for that site.
 
 <Warning>
-The shared router and private site-origin path is not generally available in the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status). Creating a domain record in the dashboard or API does not prove that end-to-end routing is active. Do not change production DNS until LibOps support confirms the current ingress path and fallback hostname for your site.
+The shared router and private site-origin path is not generally available in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). Creating a domain record in the dashboard or API does not prove that end-to-end routing is active. Do not change production DNS until LibOps support confirms the current ingress path and fallback hostname for your site.
 </Warning>
 
 Do not point customer DNS directly at a site VM, Cloud Run service, or load balancer IP. The public hostname should enter through Cloudflare so edge rules, TLS, rate limits, and the LibOps site router stay in the request path.

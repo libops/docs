@@ -45,7 +45,7 @@ Instead of asking every project to solve basic operations on its own, LibOps giv
     Sites run in professionally managed Google Cloud environments.
   </Card>
   <Card title="Isolation" icon="server">
-    Each site runs on its own dedicated virtual machine.
+    Production sites use production-only runtime VMs, while non-production sites use separate runtime VMs. Each role-matched runtime has a seven-site limit.
   </Card>
   <Card title="Git-Centric" icon="github">
     All application settings and deployment logic live in version control.
@@ -76,7 +76,7 @@ LibOps manages the secure compute environment on Google Cloud. Your team focuses
 
 ## Runtime Isolation
 
-Each production workload runs on a distinct runtime host. Non-production environments for the same project can share a separate runtime host, which keeps previews and staging isolated from production without requiring a new VM for every short-lived environment.
+Production sites run only on production-role runtime hosts, while non-production environments run on separate ephemeral or custom runtime hosts. Default and role-based placement can assign up to seven compatible sites to one runtime before creating a slot-stable overflow runtime. Explicitly selecting a runtime that is already full returns a capacity error instead of silently moving the site.
 
 <CardGroup cols={2}>
   <Card title="Fault isolation" icon="shield">

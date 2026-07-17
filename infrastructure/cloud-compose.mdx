@@ -78,17 +78,30 @@ Prefer the module for the provider the caller already selected:
 
 | Entry point | Modular source pattern | Infrastructure boundary | Identity and secrets |
 | --- | --- | --- | --- |
-| Google Cloud | `github.com/libops/cloud-compose//providers/gcp?ref=RELEASE_OR_FULL_SHA` | Compute, network, firewall, persistent disks, service accounts, and optional GCP integrations | Can use a consumer-configured Vault GCP IAM role; the operator owns the role, policy, and secret paths |
+| Google Cloud, new deployment | `github.com/libops/cloud-compose//providers/gcp?ref=RELEASE_OR_FULL_SHA` | Compute, network, firewall, persistent disks, service accounts, and optional GCP integrations | Can use a consumer-configured Vault GCP IAM role; the operator owns the role, policy, and secret paths |
+| Google Cloud, 1.x-compatible root | `github.com/libops/cloud-compose?ref=RELEASE_OR_FULL_SHA` | The same GCP boundary while preserving the historical indexed `module.gcp[0]` address | The root accepts only `cloud_provider = "gcp"` and has the same GCP identity boundary |
 | DigitalOcean | `github.com/libops/cloud-compose//providers/do?ref=RELEASE_OR_FULL_SHA` | Droplet, network/firewall inputs, and persistent volumes exposed by the module | Consumer-managed provider token and secret authentication |
 | Linode | `github.com/libops/cloud-compose//providers/linode?ref=RELEASE_OR_FULL_SHA` | Instance, firewall inputs, and persistent volumes exposed by the module | Consumer-managed provider token and secret authentication |
 | Ansible | `ansible/` role from the pinned release | Bootstrap files and packages on an existing Debian or Ubuntu host | The existing-host owner supplies OS access, secrets, network, DNS, firewall, and storage |
 | Salt | `salt/` formula from the pinned release | Bootstrap files and packages on an existing Debian or Ubuntu host | The existing-host owner supplies OS access, secrets, network, DNS, firewall, and storage |
 
-Pin the source to the reviewed release or a full commit. The compatibility dispatcher at the repository root remains available, but a new caller should use one provider entrypoint so Terraform does not load unrelated providers. Do not source production infrastructure from a moving branch.
+Pin the source to the reviewed release or a full commit. Since `1.3.0`, each
+entrypoint statically declares only its target provider. The repository root is
+not an all-provider dispatcher: it is a GCP-only compatibility entrypoint for
+existing GCP state and intentionally has no DigitalOcean or Linode dependency.
+New deployments should select one path under `providers/`. Do not source
+production infrastructure from a moving branch.
 
 Provider entrypoints should normalize the same runtime object before calling provider-specific resources. A template preset supplies repository, plugin, and package defaults only; an explicit caller value wins. Shared host behavior belongs in provider-neutral runtime modules so Google Cloud, DigitalOcean, Linode, Ansible, and Salt do not grow independent application lifecycles. Each adapter must reject an input it cannot support rather than silently ignore it.
 
-Changing an existing deployment from the root dispatcher to a provider module changes module addresses even when the real infrastructure is identical. Preserve the addresses with release-provided `moved` blocks or an explicit, reviewed state migration. Do not let Terraform destroy and recreate a data-bearing host to make the module path look cleaner.
+An existing GCP deployment can remain on the root source at `1.3.0` or later without
+loading unrelated providers or moving `module.gcp[0]`. Moving it to
+`providers/gcp` is an optional, separate state refactor. Existing DigitalOcean
+and Linode callers must adopt their provider-specific source and place the
+release-documented `moved` block in the caller's root module. In every case,
+back up remote state and require a plan with address moves only—no VM, firewall,
+or durable-volume replacement or deletion. Do not recreate a data-bearing host
+merely to make a module path look cleaner.
 
 ## Pin the complete runtime contract
 
@@ -150,9 +163,9 @@ If the selected release does not contain that foundation module, follow its
 release-specific IAM instructions. Do not copy an unpublished foundation
 module from a development branch into an otherwise pinned production stack.
 
-<Warning>
-In the [July 13, 2026 release-status snapshot](/infrastructure/current-release-status), PPB `0.5.0` exists as a source/GitHub release but its versioned container is not published. The power-management paragraphs below define the contract a selected release must satisfy; they do not make `0.5.0` a consumable image or make the managed shared-router/private-PPB path available.
-</Warning>
+<Info>
+The [July 17, 2026 release-status snapshot](/infrastructure/current-release-status) records cloud-compose `1.5.0` and the signed PPB `0.5.1` image as released self-hosted dependencies. That does not make the separate managed shared-router/private-PPB integration generally available; its API, edge, and end-to-end promotion gates remain independent.
+</Info>
 
 The optional Cloud Run power-management ingress reaches the VM's private
 application port through [Direct VPC
@@ -166,10 +179,20 @@ Terraform identity needs authority to manage host-project and subnet IAM; the
 application Terraform identity needs authority to inspect the selected network
 and manage its per-stack firewall rule.
 
+Do not assign the Direct VPC revision to a [Serverless VPC Access connector's
+subnet](https://cloud.google.com/vpc/docs/serverless-vpc-access#ip_address_ranges).
+A connector requires its own otherwise-unused `/28`, while Direct VPC
+requires capacity in the selected `/26` or larger application subnet. If an
+unrelated workload still needs a connector, give that connector a separate
+subnet and keep it outside this firewall source range unless it belongs in the
+same trust boundary.
+
 The word "ingress" here describes the proxy's application role, not a Direct
-VPC ingress feature. Cloud Run services do not support Direct VPC ingress.
-Public requests enter Cloud Run through its configured service/edge ingress;
-Direct VPC egress is only the private hop from that service to the VM.
+VPC ingress feature. Cloud Run services and jobs do not support Direct VPC
+ingress; worker pools have a separate ingress capability that this architecture
+does not use. Public requests enter Cloud Run through its configured
+service/edge ingress; Direct VPC egress is only the private hop from that
+service to the VM.
 
 Cloud-compose configures this Cloud Run attachment with
 `vpc_direct_egress = "PRIVATE_RANGES_ONLY"`. Only requests to private
@@ -199,12 +222,27 @@ the same trust boundary. Leave free capacity for `/28` allocation blocks,
 roughly two addresses per running service instance, and overlapping revision
 retention; an already occupied `/26` is not sufficient.
 
+In a Shared VPC, also audit hierarchical firewall policies and every existing
+host-project ingress rule that can reach the VM. The narrow rule owned by one
+cloud-compose application state cannot cancel a broader rule owned elsewhere.
+Record the subnet's other consumers and re-audit them before widening either
+the source range or the application port.
+
 A release that provides power management must declare bounded power-on, TCP
 connection, and Cloud Run request budgets. Check the selected release for the
 tested values. The proxy adds no application-level request or response-status
 retry after a connection succeeds; Go may still retry requests it classifies
 as replayable when a pooled connection is found stale. Operators and clients
 must still tolerate occasional connection resets during network maintenance.
+
+Cloud-compose `1.5.0` retains the tested direct public PPB path with a 240-second
+power-on budget and a 300-second backend-dial budget inside the 600-second
+Cloud Run request ceiling. Its hosted GCP gate sends one request, verifies the
+VM reaches `RUNNING`, follows a changed ephemeral external address after a
+stop/start, then performs host-level and application checks. Those direct-path
+budgets do not fit behind non-Enterprise Cloudflare's 120-second read limit;
+the managed router uses a separate pre-dispatch retry contract documented in
+[Security and Operations](/platform/security-operations).
 
 In releases that expose the hardened power-management contract, enabling it
 requires explicit original-client CIDRs in
@@ -229,12 +267,16 @@ depth zero rather than trust the incoming `X-Forwarded-For` chain. See [Security
 and Operations](/platform/security-operations) for that target managed request
 path.
 
-Google recommends an egress-aware startup probe for ordinary Direct VPC
-services. The power-button proxy cannot use application reachability as its
-startup gate because the application VM is intentionally allowed to be off;
+Google warns that a new Direct VPC instance can take a minute or more to
+establish a connection and recommends an egress-aware startup probe with
+retries for ordinary services. The power-button proxy cannot use application
+reachability as its startup gate because the application VM is intentionally
+allowed to be off;
 the proxy has to accept the first request before it can start that VM. Its
-bounded backend dial loop is the retry boundary for this design. A generic
-process-only probe would not prove VPC connectivity.
+bounded backend dial loop is the retry boundary for this design. The selected
+release therefore uses a process-only startup probe to avoid deadlocking the
+wake path. That probe proves only that PPB can accept requests; the hosted
+first-request smoke test is the evidence for Direct VPC connectivity.
 
 Cloud Run can retain addresses for up to 20 minutes after a service revision
 scales down. After a service is deleted or moved away, wait one to two hours
@@ -308,6 +350,15 @@ When opting in:
 - isolate failure so an updater cannot take down the application workload.
 
 When a selected release advertises verified managed artifacts, it must verify downloaded Docker plugins, sitectl packages, rootfs archives, and optional rollout artifacts before atomic installation. Preserve those checks when replacing an installer or adding another managed artifact.
+
+Automated Docker cleanup is disabled by default and must remain independent of
+key rotation or application rollout. If an operator enables the dedicated
+cleanup timer, preserve rollback-tagged images: prune old stopped containers,
+unused networks, dangling images, and build cache explicitly, with an age
+filter and a single host lock. Do not restore `docker system prune --all`; it
+can remove the named image retained for a local rollback. The safer policy may
+retain unused named images, so monitor disk use and remove an obsolete named
+release only after its rollback window closes.
 
 ## Adopting the modular runtime contract
 

@@ -147,7 +147,16 @@ Managed Terraform keeps long-lived ownership narrow:
 | Project | One customer project plus its complete runtime and site infrastructure inventory |
 | Edge | Public hostname and edge-routing resources |
 
-Creation follows foundation, organization, Vault configuration, project, then edge; deletion reverses that order. A site does not receive an independent Terraform state, and one state must not manage a resource owned by another root.
+Creation follows foundation, organization, Vault configuration, project, then
+edge; deletion reverses that order. Deletion is staged and terminal: children
+must be retired before their parent, externally billed project capacity must be
+removed idempotently before the local tombstone commits, and a project is not
+marked decommissioned until its final infrastructure apply succeeds. An
+organization delete does not silently cascade through projects; every retained
+project must already be terminal and decommissioned, with billing in a terminal
+`canceled` or `incomplete_expired` state (or no subscription). A site does not
+receive an independent Terraform state, and one state
+must not manage a resource owned by another root.
 
 <Warning>
 The shared-router/private-PPB integration is a target architecture and is not generally released in the [current status snapshot](/infrastructure/current-release-status). The ownership boundary remains valid, but the linked router identity, canonical client-IP, and timeout details must not be treated as the current production topology until their release gate is complete.
