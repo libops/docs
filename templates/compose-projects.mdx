@@ -60,6 +60,12 @@ upstream image selector. An explicit `runtime.extra_env.ISLANDORA_TAG` value
 wins over that default; record and test any such override as part of the
 deployment compatibility set.
 
+Core `sitectl` `v1.0.1` and `sitectl-isle` `v1.0.1` were published later as
+spelling-only compatibility patches. The generated documentation set records
+those patches with `sitectl-drupal` `v1.0.0` and `sitectl-libops` `v1.3.0`.
+Their publication does not retroactively change the exact `v1.0.0` package
+pins in the cloud-compose `1.5.0` baseline above.
+
 ArchivesSpace, OJS, Omeka Classic, and Omeka S base tags name the bundled
 upstream application release. Drupal, Islandora, and WordPress tags name the
 runtime because their Composer lockfiles in the template own the application

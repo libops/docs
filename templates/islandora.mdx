@@ -48,16 +48,23 @@ Triplet is managed by the ISLE plugin's IIIF components. It is not a separate si
 
 The detailed choices and current flags live in the [ISLE plugin documentation](https://sitectl.libops.io/plugins/isle) and [component guide](https://sitectl.libops.io/components).
 
-The independently released v1 set pairs
-[`libops/isle` `v1.1.0`](https://github.com/libops/isle/tree/v1.1.0) with core
-`sitectl`, `sitectl-drupal`, and
-[`sitectl-isle`](https://github.com/libops/sitectl-isle/releases/tag/v1.0.0)
-at `v1.0.0`. The template hosted smoke is green, and the ISLE plugin is
+The current independently released v1 packages are
+[`libops/isle` `v1.1.0`](https://github.com/libops/isle/tree/v1.1.0), core
+[`sitectl` `v1.0.1`](https://github.com/libops/sitectl/releases/tag/v1.0.1),
+[`sitectl-drupal` `v1.0.0`](https://github.com/libops/sitectl-drupal/releases/tag/v1.0.0),
+and [`sitectl-isle` `v1.0.1`](https://github.com/libops/sitectl-isle/releases/tag/v1.0.1).
+The core and ISLE `v1.0.1` releases are spelling-only compatibility patches:
+they display `superseded` canonically while retaining legacy input and RPC
+compatibility. The template hosted smoke is green, and the ISLE plugin is
 published as GitHub binary archives, a Homebrew formula, and Debian and RPM
-packages. Cloud-compose `1.5.0` records this set as its released ISLE preset
-and supplies `ISLANDORA_TAG=6.3.19` as the reviewed default for
-component-controlled upstream images. A downstream override remains explicit
-and must be included in that deployment's compatibility record.
+packages.
+
+Cloud-compose `1.5.0` separately records core `sitectl`, `sitectl-drupal`, and
+`sitectl-isle` at `v1.0.0` as its released ISLE compatibility baseline; later
+patch releases do not alter those pins. It supplies `ISLANDORA_TAG=6.3.19` as
+the reviewed default for component-controlled upstream images. A downstream
+override remains explicit and must be included in that deployment's
+compatibility record.
 
 ## Cross-domain feature bundles
 
