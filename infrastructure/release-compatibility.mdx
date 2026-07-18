@@ -125,56 +125,42 @@ copy. Images consumed by LibOps GCP runtimes also receive a GAR copy:
 `api` (also tagged as `dash`), `api-init`, `api-vault-agent`, and
 `control-plane` use the private API-project repository; `terraform-runner`,
 `gcp-vm-ip-controller`, `controller-ingress`, and `site-controller` use shared
-public GAR; and `cloudflare-ingress-router` uses the separate
+public GAR; and `site-router` uses the separate
 shared-infrastructure GAR repository. The independently owned `vault-server`
 image is not built or published by the API workflow.
 
-The Terraform runner has a separate provider-mirror build path so one large
-provider build does not hide which provider failed or exhaust one native
-runner. It gives every pinned Terraform provider its own lane:
+The Terraform runner consumes official provider packages through Terraform's
+authenticated Registry mirror command. Its dedicated mirror root pins the
+providers required by the embedded stacks:
 
 | Provider lane | Contents |
 | --- | --- |
 | `google` | Google provider |
 | `google-beta` | Google Beta provider |
 | `vault` | Vault provider |
-| `cloudflare` | Cloudflare provider |
 | `time` | Time provider |
 
-On a pull request, each lane is built and scanned separately for native
-`linux/amd64` and `linux/arm64`. The jobs do not receive package, GAR, or OIDC
-publisher authority. They upload one-day, run-ID-scoped mirror artifacts, and
-the matching architecture's Terraform-runner job downloads only artifacts
-from that workflow run. It validates the exact allowlisted files, executable
-modes, ELF architectures, Go toolchain, and security-sensitive dependency
-versions before assembling the runner. The completed runner then proves that
-each embedded stack can initialize and validate without downloading providers.
-These artifacts are an internal handoff between credential-free PR jobs, not
-published packages or a release channel.
+The committed provider lockfile contains the upstream authenticated checksums
+for `linux/amd64` and `linux/arm64`. Pull-request jobs build the complete
+Terraform runner for both native architectures without package, GAR, or OIDC
+publisher authority, scan it, and prove every embedded stack initializes and
+validates with network provider installation disabled. The workflow does not
+compile providers, publish intermediate provider images, or replace upstream
+binaries to chase dependency scanner findings. Provider fixes arrive through
+reviewed upstream releases and lockfile updates.
 
 After required CI succeeds for the exact current `main` commit, the protected
-publisher builds the same five multi-platform lanes. Their intermediate
-images are GHCR-only, scanned and keylessly signed build products named
-`terraform-providers-google`, `terraform-providers-google-beta`, and
-the corresponding `terraform-providers-vault`,
-`terraform-providers-cloudflare`, and `terraform-providers-time` packages. The
-workflow uses the stable
-`sha-<40-character-commit>-run-<workflow-run-id>-provider` selector for those
-five intermediates. Before building the final runner, it resolves each
-intermediate to an immutable digest, requires exactly the expected amd64 and
-arm64 manifests and distinct digests, verifies each keyless signature against
-the pinned shared publisher identity, and confirms that the selected commit is
-still current `main`. Only those verified digest references enter the final
-Terraform-runner build.
+publisher builds the same final multi-platform runner directly from the
+reviewed Dockerfile and lockfile. There is no provider-image handoff between
+jobs or registries.
 
 The deployable images, including the final `terraform-runner`, use the
 `sha-<40-character-commit>-run-<workflow-run-id>-attempt-<workflow-attempt>`
 selector. The runner is scanned, signed, and published to both GHCR and shared
 public GAR. Deployment resolves every deployable image name independently and
-passes only digest references; it does not deploy or pin the intermediate
-provider images. These signatures bind the reviewed publisher identity to the
-published digests. They are not SLSA provenance or an attestation of the full
-build-material graph.
+passes only digest references. These signatures bind the reviewed publisher
+identity to the published digests. They are not SLSA provenance or an
+attestation of the full build-material graph.
 
 Before this API publication path can be promoted, the admin plugin must resolve
 every selected API bundle image and the independently released Vault server to

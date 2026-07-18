@@ -1,83 +1,161 @@
 ---
 title: "Custom Domains"
-description: "Prepare a public hostname after managed ingress is enabled for a LibOps-managed site"
+description: "Verify and publish a customer-owned hostname through the LibOps Google Cloud edge"
 ---
 
-The target LibOps managed-ingress service can serve customer-owned domains through a shared Cloudflare path. You add the hostname to the site in LibOps, then point it at the LibOps SaaS fallback hostname only after LibOps confirms that the managed ingress release is enabled for that site.
+LibOps publishes customer-owned hostnames through one Google Cloud edge. Cloud
+DNS provides managed `libops.site` names, Google Certificate Manager issues and
+renews public certificates, the global Application Load Balancer terminates
+TLS, Cloud Armor applies edge controls, and the LibOps site router selects the
+exact active site.
+
+Adding a domain starts an asynchronous, server-owned workflow. A new domain is
+always pending. You cannot set it active, choose an origin, or provide
+certificate and edge resource fields.
 
 <Warning>
-The shared router and private site-origin path is not generally available in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). Creating a domain record in the dashboard or API does not prove that end-to-end routing is active. Do not change production DNS until LibOps support confirms the current ingress path and fallback hostname for your site.
+The Google-native shared router and private site-origin path is a target
+managed-platform contract until the [current release status](/infrastructure/current-release-status)
+names the complete promoted artifact set. Do not change production DNS based
+only on a pending domain row. Use the DNS instructions returned for your exact
+domain after LibOps reports the route ready.
 </Warning>
 
-Do not point customer DNS directly at a site VM, Cloud Run service, or load balancer IP. The public hostname should enter through Cloudflare so edge rules, TLS, rate limits, and the LibOps site router stay in the request path.
-
 <Note>
-Adding a domain does not make the site public by itself. LibOps sites are IP-allowlisted by default, so only IPs covered by firewall rules can reach them. Before announcing a production hostname, follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) and add a public production firewall rule when appropriate.
+Adding a domain does not make the site public by itself. LibOps sites are
+IP-allowlisted by default. Before announcing a production hostname, follow
+[Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) and
+add intentional public firewall rules.
 </Note>
+
+Cloud CDN is disabled for this launch. The managed edge provides TLS,
+load-balancing, routing, Cloud Armor, and Google infrastructure DDoS
+protection; it does not cache application responses or provide offline origin
+availability.
 
 ## Before you start
 
 You need:
 
-- A LibOps site where you have permission to manage site settings.
-- Access to the domain's DNS provider.
-- A subdomain such as `collections.example.edu` or `journal.example.org`.
-- A publishing plan for production firewall access.
-- Confirmation from LibOps support that managed ingress is enabled for this site and that `customers.libops.site` is the correct current DNS target.
+- a LibOps site where you can manage settings;
+- access to the authoritative DNS for the customer hostname;
+- a subdomain such as `collections.example.edu` or `journal.example.org`; and
+- a plan for the site's public firewall access.
 
-<Note>
-Root domains such as `example.edu` require DNS-provider-specific CNAME flattening or ALIAS/ANAME support. Use a subdomain unless LibOps support has confirmed the root-domain plan.
-</Note>
+Subdomains provide the simplest traffic record. A DNS apex such as
+`example.edu` cannot use a standards-compliant CNAME. LibOps returns the shared
+A and AAAA values for an apex only after the route is ready.
 
-## Add a domain in the dashboard
+## Add the domain
 
-1. Open the LibOps dashboard.
-2. Go to the organization and project that contain the site.
-3. Open the site.
-4. Open the site's Domains or Ingress section.
-5. Select **Add domain**.
-6. Enter the hostname, for example `collections.example.edu`.
-7. Confirm the target site and save.
+In the dashboard:
 
-After saving, LibOps records the requested domain against the site. An active database status alone does not prove that the edge and origin path has been promoted or can route traffic. Wait for managed-ingress confirmation before changing DNS.
+1. Open the organization and project that own the site.
+2. Open the site and its **Domains** section.
+3. Select **Add domain**.
+4. Enter the exact hostname and confirm the target site.
+5. Save.
 
-## Add DNS records
+LibOps normalizes and reserves the hostname, creates a pending binding, and
+returns the first DNS instruction. Creating the row does not publish traffic.
 
-After LibOps confirms the site's ingress path, point the public hostname at the supplied fallback hostname. For the target architecture documented here, that value is:
+Technical operators can use `sitectl-libops` for the same
+create/list/get/check/retry/delete lifecycle. See the
+[sitectl domains reference](https://sitectl.libops.io/plugins/libops/domains).
+
+## 1. Prove ownership
+
+LibOps returns a one-time TXT instruction similar to:
+
+```text
+Type:  TXT
+Name:  _libops-verify.collections.example.edu
+Value: <one-time value returned by the API>
+TTL:   300 or provider default
+```
+
+Copy the name and value exactly. LibOps stores only a digest and never
+redisplays the proof. If it is lost or expires, rotate it through the domain
+workflow.
+
+Use **Check again** after the TXT record is authoritative. The check observes
+DNS and wakes reconciliation; it does not force the domain into a later state.
+
+## 2. Authorize certificate renewal
+
+After ownership succeeds, LibOps creates a Google Certificate Manager DNS
+authorization and returns Google's exact CNAME instruction:
+
+```text
+Type:  CNAME
+Name:  <Google validation name returned by LibOps>
+Value: <Google validation target returned by LibOps>
+TTL:   300 or provider default
+```
+
+This validation CNAME must remain in DNS for certificate renewal. If the zone
+has restrictive CAA records, allow Google Trust Services with `pki.goog`.
+
+LibOps waits for the validation record, managed certificate, certificate-map
+entry, and exact site route. Missing DNS remains a waiting state. A retry only
+resumes a retryable failed reconciliation; it cannot skip validation.
+
+## 3. Publish traffic
+
+LibOps returns the traffic record only after TLS and routing are ready. For a
+subdomain it is an organization-specific target such as:
 
 ```text
 Type:  CNAME
 Name:  collections.example.edu
-Value: customers.libops.site
+Value: edge.foo.libops.site
 TTL:   300 or provider default
 ```
 
-If the domain is hosted in another Cloudflare zone, create the CNAME as **DNS only**, not proxied.
+Always use the value returned for the domain. Do not substitute a VM address,
+a Cloud Run `run.app` hostname, a remembered shared hostname, or an address
+copied from another organization.
 
-## Manage a domain with sitectl
+For an apex, use the exact A and AAAA values returned by LibOps. Do not create
+a CNAME at a standards-compliant apex.
 
-Technical operators can create, inspect, and remove the same domain resources through the `sitectl-libops` plugin. Current flags and output behavior live in the [sitectl domains reference](https://sitectl.libops.io/plugins/libops/domains).
+LibOps marks the domain active only after public DNS resolves to the managed
+edge and TLS serves the expected hostname.
 
-## Check Routing
+## Verify publication
 
-The domain is ready only when:
+The domain is ready when:
 
-- LibOps reports the domain as active.
-- LibOps confirms that the site's managed ingress and private origin are promoted and healthy.
-- Public DNS resolves the hostname to the LibOps fallback hostname.
-- TLS is available at the edge.
-- Firewall rules allow the intended visitors. For a public production site, this usually includes `0.0.0.0/0` for IPv4 traffic.
-- Requests for the customer hostname are routed to the correct LibOps site.
-- The original `Host` header is preserved so the application can identify the public hostname.
+- LibOps reports `ACTIVE`, not merely pending or route-ready;
+- public DNS matches the traffic instruction returned for this binding;
+- TLS is valid for the exact customer hostname;
+- firewall rules permit the intended visitors;
+- the request reaches the intended site; and
+- application canonical URL and trusted-host settings use the public hostname.
 
-DNS changes can take time to propagate. If the domain still does not resolve after the status is active, check the authoritative DNS records first.
+For a public production site this normally includes `0.0.0.0/0` and, when IPv6
+is intended, `::/0`. DNS and certificate observations can lag after an
+authoritative record changes. Use **Check again** rather than creating a second
+domain binding.
+
+## Delete a domain
+
+Deletion is asynchronous and fail-closed. LibOps blocks routing first, removes
+the exact certificate-map entry, certificate, and authorization, and retains
+the row while cleanup is in progress. The domain view then identifies the
+traffic, validation, and proof records that can be removed.
+
+Do not attach the same hostname to another site until deletion and the hostname
+quarantine finish. A later attachment requires a new ownership proof.
 
 ## Common issues
 
-| Issue | What to check |
+| State or symptom | What to check |
 | --- | --- |
-| Domain is not active | Confirm the domain was created without an explicit pending, suspended, or blocked status. |
-| Browser sees the wrong site | Confirm the hostname is attached to the intended LibOps site. |
-| Domain resolves but does not load | Confirm the CNAME points to `customers.libops.site`, not a VM IP or Cloud Run hostname. |
-| Domain resolves but visitors are blocked | Confirm firewall rules allow the visitor IPs. Public production sites need an intentional public rule such as `0.0.0.0/0`. |
-| Cloudflare dashboard shows another proxy layer | If your DNS provider is Cloudflare, make the customer CNAME DNS-only. |
+| Waiting for ownership | Query the authoritative TXT name and compare it with the current one-time instruction. |
+| Waiting for certificate DNS | Confirm the exact Google CNAME name and target and leave it in place. |
+| Certificate issuance failed | Check CAA and allow `pki.goog`; then retry only if LibOps marks the error retryable. |
+| Route ready, traffic not active | Publish the exact CNAME or A/AAAA values returned for this binding and wait for authoritative DNS. |
+| Browser sees the wrong site | Confirm the hostname is attached to the intended site and that DNS does not contain an older conflicting record. |
+| Visitors are blocked | Confirm the production site's firewall rules intentionally allow their IPv4 and, when enabled, IPv6 ranges. |
+| Domain is deleting | Wait for server-owned cleanup; do not recreate it or remove validation records before the UI says they are safe to remove. |

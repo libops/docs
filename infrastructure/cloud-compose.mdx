@@ -240,9 +240,9 @@ power-on budget and a 300-second backend-dial budget inside the 600-second
 Cloud Run request ceiling. Its hosted GCP gate sends one request, verifies the
 VM reaches `RUNNING`, follows a changed ephemeral external address after a
 stop/start, then performs host-level and application checks. Those direct-path
-budgets do not fit behind non-Enterprise Cloudflare's 120-second read limit;
-the managed router uses a separate pre-dispatch retry contract documented in
-[Security and Operations](/platform/security-operations).
+budgets are intentionally longer than the managed platform's bounded router
+request; the managed router uses a separate pre-dispatch retry contract
+documented in [Security and Operations](/platform/security-operations).
 
 In releases that expose the hardened power-management contract, enabling it
 requires explicit original-client CIDRs in

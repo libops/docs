@@ -3,21 +3,21 @@ title: "Security and Operations"
 description: "Managed-platform security defaults and the responsibilities retained by self-hosted operators"
 ---
 
-Security ownership changes with the adoption layer. Cloudflare edge policy, LibOps Vault resources, platform membership, and managed runtime operations apply to LibOps-managed sites. They are not automatically added to a Compose template or a cloud-compose deployment in an institution's account.
+Security ownership changes with the adoption layer. Google Cloud edge policy, LibOps Vault resources, platform membership, and managed runtime operations apply to LibOps-managed sites. They are not automatically added to a Compose template or a cloud-compose deployment in an institution's account.
 
 <Info>
 For the full self-hosted checklist, including Terraform state, cloud IAM, secret delivery, backups, and restore testing, see [Self-Hosted Operations](/infrastructure/self-hosted-operations).
 </Info>
 
 <Warning>
-The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production migration or DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
+The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
 </Warning>
 
 ## Managed-platform defaults
 
 <CardGroup cols={3}>
   <Card title="Edge protection" icon="shield">
-    Managed public sites use LibOps-managed ingress and Cloudflare policy for encrypted traffic, routing, and edge controls.
+    Managed public sites use Cloud DNS, Google-managed TLS, a global external Application Load Balancer, and Cloud Armor for encrypted traffic, routing, and edge controls.
   </Card>
   <Card title="Vault-backed secrets" icon="lock">
     Managed platform secrets are stored and scoped as platform resources rather than committed to repositories or copied into unmanaged environment files.
@@ -29,16 +29,16 @@ The shared Cloud Run router and private per-site PPB path below is a **target ma
 
 ## Managed ingress target request path
 
-The target design places Cloudflare in front of managed public sites. It has one declared public edge, a source-restricted router boundary, and an IAM-authenticated site origin:
+The target design has one Google-managed public edge, a load-balancer-only router boundary, and an IAM-authenticated site origin:
 
 ```text
 Visitor
   |
   v
-Cloudflare edge
+Cloud DNS hostname
   |
   v
-Global external HTTPS load balancer + Cloud Armor
+Global external Application Load Balancer + Cloud Armor + Certificate Manager
   |
   v
 Shared Cloud Run router
@@ -50,7 +50,7 @@ Private IAM-authenticated per-site PPB
 VM private IP and application port
 ```
 
-In the target contract, Cloud Armor must admit only Cloudflare's current published IPv4 and IPv6 proxy ranges and deny other sources. The shared router must accept traffic only from the load balancer, and its default `run.app` URL must be disabled so it cannot become an alternate public edge.
+In the target contract, Cloud Armor applies the reviewed public customer policy at the load balancer. Customer and model backends use separate policies. Preconfigured WAF and rate-limit rules begin in preview and are enforced individually after false-positive review. The shared router accepts traffic only from the load balancer, and its default `run.app` URL is disabled so it cannot become an alternate public edge. Cloud CDN remains disabled.
 
 The target per-site power and proxy backend (PPB) has a different URL decision. Its `run.app` hostname must remain addressable because the shared router uses that hostname as the origin, but it must not be public: Cloud Run invocation is granted only to the router service account. The VM application port remains private and is reached only through the runtime subnet firewall rule.
 
@@ -58,7 +58,7 @@ Self-hosted operators must supply their own DNS, certificate lifecycle, trusted-
 
 ### Client IP and request identity
 
-In the target path, Cloudflare supplies `CF-Connecting-IP`. Because the load balancer has already restricted the source to Cloudflare proxy networks, the router may treat that header as eligible input, but it must fail closed unless there is exactly one non-comma, syntactically valid IP value. It must not fall back to `True-Client-IP`, `CF-Connecting-IPv6`, or a caller-supplied `X-Forwarded-For` value.
+The load balancer overwrites `X-Libops-Edge-Client-IP` with its authenticated client address and `X-Libops-Edge-SNI` with the TLS SNI hostname. The router accepts exactly one syntactically valid value for each and rejects a normalized SNI/Host mismatch. It ignores caller-supplied vendor headers and the untrusted prefix of `X-Forwarded-For`.
 
 The router must overwrite `X-Libops-Client-IP` with that validated address and rebuild the forwarded client headers. Each site PPB must read the single canonical `X-Libops-Client-IP` value at depth `0` and check it against that site's wake-up allowlist. An incoming hostile `X-Forwarded-For` prefix or forged `X-Libops-Client-IP` must not move the selected address. This target depth-zero contract is specific to the router-created canonical header; it is not the direct public PPB `X-Forwarded-For` contract documented for self-hosted cloud-compose.
 
@@ -68,16 +68,16 @@ The router must authenticate to each private PPB with a Google ID token for one 
 
 | Layer | Owns | Must preserve |
 | --- | --- | --- |
-| Cloudflare | Customer hostname edge, TLS, and platform edge policy | Send traffic to the shared origin and supply the visitor IP header |
-| Shared edge Terraform | Global load balancer, Cloud Armor Cloudflare-range policy, router identity, regional router services, and timeout contract | Keep the router load-balancer-only and its image digest pinned |
-| Shared router | Hostname lookup, exact Cloudflare visitor-IP validation, canonical header replacement, and origin ID token | Reject ambiguous client identity, preserve application authorization, and route only to validated Cloud Run origins |
+| Cloud DNS, Certificate Manager, and load balancer | Authoritative managed names, public TLS, SNI selection, stable addresses, and the declared public edge | Preserve exact DNS ownership, certificate-map readiness, and load-balancer-overwritten identity headers |
+| Shared edge Terraform | Global load balancer, Certificate Manager map, Cloud Armor policy, router identity, regional router services, and timeout contract | Keep the router load-balancer-only, Cloud CDN disabled, and image digests pinned |
+| Shared router | Exact active-host lookup, SNI/Host validation, canonical header replacement, and origin ID token | Reject ambiguous client identity, preserve application authorization, and route only to validated Cloud Run origins |
 | Project foundation | Regional network and subnets, Cloud Run service identity, and network-use permissions | Keep Direct VPC capacity and IAM available before runtimes attach |
 | Runtime state | Per-site PPB and identity, router invoker grant, custom audience, VM start permission, and app-port firewall rule | Scope power permission to the runtime VM and destination traffic to its service account and declared ports |
 | Compose repository and application | Application ingress settings, trusted-proxy behavior, sessions, and application authorization | Treat forwarded identity as deployment configuration and retain application-level access controls |
 
 ## Private VM delivery on Google Cloud
 
-In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. A separate Direct VPC attachment carries authenticated controller requests to the private rollout endpoint. Cloud Run services and jobs do not support Direct VPC ingress: external traffic still enters the declared Cloudflare, load-balancer, and Cloud Run path. Worker-pool ingress is a separate capability that this design does not use.
+In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. A separate Direct VPC attachment carries authenticated controller requests to the private rollout endpoint. Cloud Run services and jobs do not support Direct VPC ingress: external traffic still enters through Cloud DNS, the global load balancer, Cloud Armor, and the shared Cloud Run router. Worker-pool ingress is a separate capability that this design does not use.
 
 The target deployment sets Cloud Run egress to `PRIVATE_RANGES_ONLY`. Only traffic to private destination ranges uses the VPC attachment; other outbound traffic follows normal Cloud Run egress and does not traverse this VPC or its Cloud NAT. Changing the service to `ALL_TRAFFIC` creates a different routing, NAT, cost, and startup-latency contract and requires a separate review and hosted test.
 
@@ -181,20 +181,19 @@ Cloud Run request ceiling 600 seconds
 
 PPB does not replay an application request after a connection succeeds. The hosted direct-path smoke test sends exactly one request, proves that the VM reaches `RUNNING`, follows any changed ephemeral VM address, and verifies the application through the host after the response.
 
-The non-Enterprise Cloudflare path cannot contain that 540-second worst case. Its separate outer budgets are:
+The managed router deliberately uses a shorter pre-dispatch budget than the direct PPB path:
 
 ```text
 Bounded route lookup                    5 seconds
 Router origin request                100 seconds
 Router Cloud Run request             110 seconds
-Cloudflare non-Enterprise read limit 120 seconds
 
-5 + 100 < 110 < 120
+5 + 100 < 110
 ```
 
-The router's bounded route lookup must also fit before its origin deadline. On a long cold start, the managed path must return a controlled, retryable failure before application dispatch while wake-up work can continue; it must not claim that the first Cloudflare request always reaches the application. A response such as `503` with `Retry-After` lets the client decide whether retrying its operation is safe. The router and PPB must never replay a request whose application dispatch might have started. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
+The router's bounded route lookup must fit before its origin deadline. On a long cold start, the managed path returns a controlled, retryable failure before application dispatch while wake-up work can continue; it does not claim that the first request always reaches the application. A response such as `503` with `Retry-After` lets the client decide whether retrying its operation is safe. The router and PPB never replay a request whose application dispatch might have started. Clients must also tolerate occasional connection resets during Cloud Run or network maintenance.
 
-Terraform must reject equality or inversion within each timeout contract. Do not raise the managed outer value above 120 unless the Cloudflare zone has an Enterprise timeout and every router deadline, failure contract, and hosted test is changed together.
+Terraform rejects equality or inversion within each timeout contract. Changing the managed budget requires coordinated router, Cloud Run, load-balancer, failure-contract, and hosted-test review.
 
 ## Vault-backed secrets
 
