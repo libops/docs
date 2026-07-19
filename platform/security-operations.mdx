@@ -10,7 +10,7 @@ For the full self-hosted checklist, including Terraform state, cloud IAM, secret
 </Info>
 
 <Warning>
-The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 17, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
+The shared Cloud Run router and private per-site PPB path below is a **target managed-platform contract**, not a generally available release in the [July 19, 2026 release-status snapshot](/infrastructure/current-release-status). It must not be used as a production DNS runbook until a later status record names the promoted image digests, publisher identities, infrastructure and API releases, and passing end-to-end canaries.
 </Warning>
 
 ## Managed-platform defaults
@@ -52,6 +52,41 @@ VM private IP and application port
 
 In the target contract, Cloud Armor applies the reviewed public customer policy at the load balancer. Customer and model backends use separate policies. Preconfigured WAF and rate-limit rules begin in preview and are enforced individually after false-positive review. The shared router accepts traffic only from the load balancer, and its default `run.app` URL is disabled so it cannot become an alternate public edge. Cloud CDN remains disabled.
 
+The router's positive route cache is an availability optimization, not an
+authorization cache. Every request conditionally revalidates its cached entry
+against the API generation and ETag. A missing route, API failure, parent
+deactivation, or generation rollback evicts the entry and fails closed before
+origin access. Positive entries expire within 60 seconds even without a
+request; destructive edge cleanup waits 65 seconds before removing Google
+resources.
+
+The edge-controller continuously re-observes active DNS authorizations,
+validation CNAMEs, certificates, map entries, public traffic DNS, and TLS at
+every published IPv4 and IPv6 address. A missing Google resource resumes from
+the missing dependency. A terminal failed certificate is preserved to avoid
+provider churn; after CAA is corrected to allow `pki.goog`, an explicit retry
+requests exactly one dependency-safe replacement. Deletion confirms absence
+on a later reconciliation and does not release a vanity hostname while public
+DNS still directs it to the shared edge.
+
+The controller is not the Certificate Manager writer. It has read-only
+Certificate Manager access, conditioned permission for the exact validation
+CNAMEs, and publish access to one ordered Pub/Sub topic. An internal
+IAM-authenticated `edge-provider-mutator` is the sole dynamic Certificate
+Manager writer. Commands are ordered by deterministic resource ID; the
+mutator accepts only the configured edge project and map, matching dynamic
+IDs, hostname, and dependency relationships. It has no DNS permission, API or
+database credential, customer-secret access, or VPC attachment. Failed
+deliveries retry and then reach an alerted dead-letter topic.
+
+Terraform-owned DNS authorizations, certificates, and certificate map use
+[Resource Manager tags supported by Certificate
+Manager](https://cloud.google.com/certificate-manager/docs/create-manage-tags)
+plus an IAM deny boundary against both dynamic identities. Certificate-map
+entries are not listed as taggable resources, so their static protection is
+enforced by the mutator's exact rejection of platform names and IDs. It is not
+represented as a tag guarantee.
+
 The target per-site power and proxy backend (PPB) has a different URL decision. Its `run.app` hostname must remain addressable because the shared router uses that hostname as the origin, but it must not be public: Cloud Run invocation is granted only to the router service account. The VM application port remains private and is reached only through the runtime subnet firewall rule.
 
 Self-hosted operators must supply their own DNS, certificate lifecycle, trusted-proxy configuration, firewall policy, and abuse controls. Enabling Traefik in a template does not provide this surrounding edge service.
@@ -69,15 +104,50 @@ The router must authenticate to each private PPB with a Google ID token for one 
 | Layer | Owns | Must preserve |
 | --- | --- | --- |
 | Cloud DNS, Certificate Manager, and load balancer | Authoritative managed names, public TLS, SNI selection, stable addresses, and the declared public edge | Preserve exact DNS ownership, certificate-map readiness, and load-balancer-overwritten identity headers |
-| Shared edge Terraform | Global load balancer, Certificate Manager map, Cloud Armor policy, router identity, regional router services, and timeout contract | Keep the router load-balancer-only, Cloud CDN disabled, and image digests pinned |
+| Shared edge Terraform | Global load balancer, static Certificate Manager resources and deny boundary, Cloud Armor policy, router/controller/mutator identities and services, ordered Pub/Sub delivery, and timeout contract | Keep the router load-balancer-only, Cloud CDN disabled, and all three service images pinned to immutable digests |
+| Edge-controller and API state gateway | Conditioned validation-CNAME mutation, read-only Certificate Manager observation, ordered mutation publication, API-owned leases, generation fences, observed-state transactions, and internal outbox events | Allow only the exact controller service account and audience; give the controller no database credential or VPC route and give the API no edge mutation IAM |
+| Edge-provider-mutator | Sole dynamic Certificate Manager mutation after exact command validation | Accept only the IAM-authenticated Pub/Sub push identity/audience and one project/map; reject static/platform IDs; provide no DNS, API, database, secret, or VPC access |
 | Shared router | Exact active-host lookup, SNI/Host validation, canonical header replacement, and origin ID token | Reject ambiguous client identity, preserve application authorization, and route only to validated Cloud Run origins |
-| Project foundation | Regional network and subnets, Cloud Run service identity, and network-use permissions | Keep Direct VPC capacity and IAM available before runtimes attach |
+| Organization foundation Terraform | Organization project and runner plus exact conditional IAM for its NS RRset in the existing parent zone | Do not create or delete the child zone here; retain the parent-zone binding until edge teardown is complete |
+| Organization edge Terraform | Child Cloud DNS zone, parent NS delegation, child records, child-zone controller IAM, and staged teardown | Keep one writer, use only the controller-released teardown phase, and leave `force_destroy = false` |
+| Project/runtime foundation | Regional network and subnets, Cloud Run service identity, and network-use permissions | Keep Direct VPC capacity and IAM available before runtimes attach |
 | Runtime state | Per-site PPB and identity, router invoker grant, custom audience, VM start permission, and app-port firewall rule | Scope power permission to the runtime VM and destination traffic to its service account and declared ports |
 | Compose repository and application | Application ingress settings, trusted-proxy behavior, sessions, and application authorization | Treat forwarded identity as deployment configuration and retain application-level access controls |
 
+### Organization DNS teardown
+
+Organization deletion is a durable sequence, not a single Terraform destroy:
+
+1. Block routes and remove dynamic Certificate Manager map entries,
+   certificates, validation CNAMEs, and authorizations. The edge-controller
+   stops at `provider_cleanup_complete`.
+2. Run edge Terraform with `teardown_phase = "remove_delegation"`. It removes
+   stack-owned child records before the parent NS delegation, but retains the
+   empty child zone and restricted controller IAM.
+3. Persist the first successful delegation-removal time and the highest TTL
+   ever published for that delegation. A retry or later lower TTL cannot
+   shorten the drain.
+4. After the full high-water TTL, require the exact child NS record to be
+   absent from a trusted recursive resolver and from every current
+   authoritative server for the parent zone. One cached answer, stale
+   authority, non-authoritative response, or DNS error leaves teardown pending.
+   The child authorities are not queried because the retained zone correctly
+   continues answering its own apex during the drain.
+5. Persist `delegation_absent` and schedule the exact final edge run. Only then
+   may `teardown_phase = "destroy"` delete the empty child zone and its IAM.
+   `force_destroy = false` makes any leftover record fail closed.
+6. Release downstream Vault, organization, and foundation deletion only after
+   the final edge output records `complete`. Foundation's parent-zone IAM is
+   removed last.
+
+Do not substitute a manual DNS deletion, `time_sleep`, `local-exec`, a failed
+apply used as a timer, or an assumed destroy order for these durable gates.
+Downstream consumers must preserve the state ownership and sequencing even if
+they customize the surrounding Terraform.
+
 ## Private VM delivery on Google Cloud
 
-In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. A separate Direct VPC attachment carries authenticated controller requests to the private rollout endpoint. Cloud Run services and jobs do not support Direct VPC ingress: external traffic still enters through Cloud DNS, the global load balancer, Cloud Armor, and the shared Cloud Run router. Worker-pool ingress is a separate capability that this design does not use.
+In the target path, the site PPB reaches the application's private VM address through [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc) without a Serverless VPC Access connector. A separate Direct VPC attachment carries authenticated deployment `controller-ingress` requests to the private rollout endpoint. Those are the only two Direct VPC use cases in this edge design. The site-router reaches PPB through its IAM-protected Cloud Run origin; the edge-controller calls the GSA-authenticated API state gateway and Google APIs over HTTPS; and the edge-provider-mutator receives authenticated Pub/Sub push and calls Certificate Manager. Router, controller, and mutator have no VPC attachment or database route. Cloud Run services and jobs do not support Direct VPC ingress: external traffic still enters through Cloud DNS, the global load balancer, Cloud Armor, and the shared Cloud Run router. Worker-pool ingress is a separate capability that this design does not use.
 
 The target deployment sets Cloud Run egress to `PRIVATE_RANGES_ONLY`. Only traffic to private destination ranges uses the VPC attachment; other outbound traffic follows normal Cloud Run egress and does not traverse this VPC or its Cloud NAT. Changing the service to `ALL_TRAFFIC` creates a different routing, NAT, cost, and startup-latency contract and requires a separate review and hosted test.
 

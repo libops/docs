@@ -33,6 +33,22 @@ load-balancing, routing, Cloud Armor, and Google infrastructure DDoS
 protection; it does not cache application responses or provide offline origin
 availability.
 
+## DNS ownership
+
+LibOps Cloud DNS is authoritative for managed names under `libops.site`. Each
+organization receives a delegated child zone, and the managed edge stack owns
+that child zone, its parent NS delegation, managed site aliases, CAA policy,
+and declared SSH records. Customers do not copy or maintain those records.
+
+Your DNS provider remains authoritative for a customer-owned hostname. LibOps
+returns three independent instructions as the binding advances: the one-time
+LibOps ownership TXT, Google's permanent certificate-validation CNAME, and the
+traffic record. Publish only the exact values returned for that binding. A
+subdomain normally receives a CNAME to its organization edge name; a zone apex
+receives the shared A and AAAA values because a standards-compliant apex cannot
+use CNAME. LibOps does not return provider-specific flattening or proxy
+settings.
+
 ## Before you start
 
 You need:
@@ -97,8 +113,19 @@ This validation CNAME must remain in DNS for certificate renewal. If the zone
 has restrictive CAA records, allow Google Trust Services with `pki.goog`.
 
 LibOps waits for the validation record, managed certificate, certificate-map
-entry, and exact site route. Missing DNS remains a waiting state. A retry only
-resumes a retryable failed reconciliation; it cannot skip validation.
+entry, and exact site route. Missing DNS remains a waiting state. LibOps keeps
+observing every active authorization, validation record, certificate, and map
+entry so provider drift is repaired instead of leaving an apparently active
+binding broken. If an active dependency disappears, LibOps blocks the route,
+returns the binding to certificate preparation, and walks the full dependency
+chain again. It does not keep serving through a stale map entry.
+
+Certificate Manager can report a terminal issuance failure when CAA does not
+permit Google Trust Services. LibOps leaves that failed certificate in place
+without repeatedly deleting and recreating it. After correcting CAA to allow
+`pki.goog`, use **Retry** once. That explicit retry removes any dependent map
+entry and requests one replacement certificate. Retry never skips ownership,
+DNS, certificate, route, or traffic validation.
 
 ## 3. Publish traffic
 
@@ -114,13 +141,18 @@ TTL:   300 or provider default
 
 Always use the value returned for the domain. Do not substitute a VM address,
 a Cloud Run `run.app` hostname, a remembered shared hostname, or an address
-copied from another organization.
+copied from another organization. Do not enable a DNS provider's HTTP proxy in
+front of the returned record: the Google load balancer is the public edge and
+must observe the customer's DNS and TLS directly.
 
 For an apex, use the exact A and AAAA values returned by LibOps. Do not create
 a CNAME at a standards-compliant apex.
 
-LibOps marks the domain active only after public DNS resolves to the managed
-edge and TLS serves the expected hostname.
+LibOps marks the domain active only after every published A and AAAA address
+exactly matches the managed edge and TLS serves the expected hostname at every
+returned address. It verifies the relevant DNS data through public resolvers
+and every assigned authoritative server, then continues checking DNS and TLS
+after activation.
 
 ## Verify publication
 
@@ -140,10 +172,20 @@ domain binding.
 
 ## Delete a domain
 
-Deletion is asynchronous and fail-closed. LibOps blocks routing first, removes
-the exact certificate-map entry, certificate, and authorization, and retains
-the row while cleanup is in progress. The domain view then identifies the
-traffic, validation, and proof records that can be removed.
+Deletion is asynchronous and fail-closed. LibOps blocks routing first. Every
+router revalidates a cached positive route on its next request; cleanup also
+waits 65 seconds, longer than the enforced 60-second positive-cache ceiling,
+before touching Google resources. LibOps then removes the exact
+certificate-map entry, certificate, and authorization in dependency order and
+confirms each resource is absent on a later reconciliation. The retained
+domain view identifies the traffic, validation, and proof records to remove.
+
+Remove the customer traffic CNAME or A/AAAA records when the domain view says
+they are safe to remove. Final deletion does not complete while public traffic
+DNS still resolves the hostname to the LibOps edge. This prevents a released
+hostname from continuing to send requests to a shared edge that no longer
+owns its route. Keep the Google validation CNAME until LibOps reports that its
+authorization has been removed.
 
 Do not attach the same hostname to another site until deletion and the hostname
 quarantine finish. A later attachment requires a new ownership proof.
@@ -154,8 +196,8 @@ quarantine finish. A later attachment requires a new ownership proof.
 | --- | --- |
 | Waiting for ownership | Query the authoritative TXT name and compare it with the current one-time instruction. |
 | Waiting for certificate DNS | Confirm the exact Google CNAME name and target and leave it in place. |
-| Certificate issuance failed | Check CAA and allow `pki.goog`; then retry only if LibOps marks the error retryable. |
+| Certificate issuance failed | Check CAA and allow `pki.goog`; after the correction is authoritative, use the explicit retry action once. LibOps does not churn a terminal failed certificate automatically. |
 | Route ready, traffic not active | Publish the exact CNAME or A/AAAA values returned for this binding and wait for authoritative DNS. |
 | Browser sees the wrong site | Confirm the hostname is attached to the intended site and that DNS does not contain an older conflicting record. |
 | Visitors are blocked | Confirm the production site's firewall rules intentionally allow their IPv4 and, when enabled, IPv6 ranges. |
-| Domain is deleting | Wait for server-owned cleanup; do not recreate it or remove validation records before the UI says they are safe to remove. |
+| Domain is deleting | Remove traffic DNS when instructed so final cleanup can complete. Do not recreate the binding or remove the validation CNAME before the UI says it is safe. |

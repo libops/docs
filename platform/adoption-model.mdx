@@ -141,28 +141,45 @@ Managed Terraform keeps long-lived ownership narrow:
 
 | State | Owner |
 | --- | --- |
-| Foundation | Customer folder, organization project, protected state bucket, and Terraform runner identity/job |
+| Foundation | Customer folder, organization project, protected state bucket, Terraform runner identity/job, and exact conditional IAM for that runner's NS record in the existing `libops.site` parent zone |
 | Organization | Shared organization network and services, Vault runtime, events, and model integrations |
 | Vault configuration | Mounts, policies, and workload-auth configuration |
 | Project | One customer project plus its complete runtime and site infrastructure inventory |
-| Edge | Public hostname and edge-routing resources |
+| Edge | Organization child Cloud DNS zone, parent NS delegation, child records, restricted controller IAM, and public hostname routing inputs |
 
 Creation follows foundation, organization, Vault configuration, project, then
-edge; deletion reverses that order. Deletion is staged and terminal: children
-must be retired before their parent, externally billed project capacity must be
-removed idempotently before the local tombstone commits, and a project is not
-marked decommissioned until its final infrastructure apply succeeds. An
-organization delete does not silently cascade through projects; every retained
-project must already be terminal and decommissioned, with billing in a terminal
-`canceled` or `incomplete_expired` state (or no subscription). A site does not
-receive an independent Terraform state, and one state
-must not manage a resource owned by another root.
+edge; deletion reverses that order. Foundation does not create the child DNS
+zone or its delegation: it creates only the project, runner, and exact
+conditional permission to change that organization's NS record in the
+existing parent zone. The edge state is the sole Terraform owner of the child
+zone, parent delegation, child records, and child-zone controller IAM.
+
+Deletion is staged and terminal. Edge provider resources are removed first.
+The first destructive edge apply removes child records and then the parent NS
+while retaining the empty child zone and controller IAM. The control plane
+persists the successful removal time and highest published delegation TTL,
+waits that full interval, and then requires the exact NS record to be absent
+from both a trusted recursive view and every current parent authoritative
+server. Only a later edge apply may delete the empty `force_destroy = false`
+zone and controller IAM. Vault, organization, and foundation state remain
+blocked until that final edge apply succeeds; foundation's parent-zone IAM is
+removed last.
+
+Externally billed project capacity must likewise be removed idempotently before
+the local tombstone commits, and a project is not marked decommissioned until
+its final infrastructure apply succeeds. An organization delete does not
+silently cascade through projects; every retained project must already be
+terminal and decommissioned, with billing in a terminal `canceled` or
+`incomplete_expired` state (or no subscription). A site does not receive an
+independent Terraform state, and one state must not manage a resource owned by
+another root. Downstream operators must not bypass a managed phase by manually
+deleting the delegation, child zone, or foundation IAM.
 
 <Warning>
 The shared-router/private-PPB integration is a target architecture and is not generally released in the [current status snapshot](/infrastructure/current-release-status). The ownership boundary remains valid, but the linked router identity, canonical client-IP, and timeout details must not be treated as the current production topology until their release gate is complete.
 </Warning>
 
-In that target path, controller and site delivery use private network traffic but remain authenticated. Shared project state owns the Cloud Run service identity, network-use permissions, and regional network capacity; runtime state owns instance-scoped power grants and VM firewall rules. The public site path still enters through Cloud DNS, the global external Application Load Balancer, Cloud Armor, and the shared router because Direct VPC provides Cloud Run **egress**, not service ingress. See [Security and Operations](/platform/security-operations) for the target router-to-PPB identity, canonical client-IP, subnet, startup, and timeout contracts.
+In that target path, deployment `controller-ingress` and site PPB delivery are the only services that use Direct VPC egress to private VM addresses; both remain authenticated. Shared project state owns the Cloud Run service identity, network-use permissions, and regional network capacity; runtime state owns instance-scoped power grants and VM firewall rules. The Google edge-controller is not on this private path: it observes Certificate Manager read-only, publishes ordered mutation commands, calls the authenticated API state gateway over HTTPS, and has no database credential or VPC attachment. An internal IAM-authenticated edge-provider-mutator is the sole dynamic Certificate Manager writer and likewise has no DNS, database, or VPC access. The public site path still enters through Cloud DNS, the global external Application Load Balancer, Cloud Armor, and the shared router because Direct VPC provides Cloud Run **egress**, not service ingress. See [Security and Operations](/platform/security-operations) for the controller/mutator trust split and the target router-to-PPB identity, canonical client-IP, subnet, startup, and timeout contracts.
 
 ## Responsibility changes by adoption layer
 
