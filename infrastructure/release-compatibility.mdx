@@ -120,12 +120,13 @@ gate fails for malformed, empty, failed, cancelled, or skipped dependencies and
 has no checkout, package, OIDC, secret, or registry permission. The main-only
 publisher remains a separate caller job.
 
-The target API repository publication gives every deployable image a GHCR
+The protected API repository publication path gives every deployable image a GHCR
 copy. Images consumed by LibOps GCP runtimes also receive a GAR copy:
 `api` (also tagged as `dash`), `api-init`, `api-vault-agent`, and
 `control-plane` use the private API-project repository; `terraform-runner`,
 `gcp-vm-ip-controller`, `controller-ingress`, and `site-controller` use shared
-public GAR; and `site-router` uses the separate
+public GAR; and `site-router`, `edge-controller`, and `edge-provider-mutator`
+use the separate
 shared-infrastructure GAR repository. The independently owned `vault-server`
 image is not built or published by the API workflow.
 
@@ -162,16 +163,18 @@ passes only digest references. These signatures bind the reviewed publisher
 identity to the published digests. They are not SLSA provenance or an
 attestation of the full build-material graph.
 
-Before this API publication path can be promoted, the admin plugin must resolve
-every selected API bundle image and the independently released Vault server to
-fail-closed GAR digest references. The VM must record the canonical API
-selector and detach its Compose checkout at the embedded commit before
-starting services. Only an explicitly configured development branch or
-`local` may follow a branch pull. Local Compose build fallbacks remain useful
-for development; they are not a production substitute for this verified source
-and image handoff. Publish the exact commands and current image-to-variable
-mapping in the sitectl documentation only when that resolver is released; an
-architecture page must not act as an unreleased CLI reference.
+The admin plugin resolves every selected API bundle image and the independently
+released Vault server to fail-closed GAR digest references. Production
+promotion still requires a deployment record naming the four private-GAR API
+digests and their publication provenance, plus hosted proof that the VM records
+the canonical API selector, detaches its Compose checkout at the embedded
+commit before starting services, handles a fresh bootstrap and in-place
+refresh, rolls back safely, and rejects ambiguous legacy-disk discovery. Only
+an explicitly configured development branch or `local` may follow a branch
+pull. Local Compose build fallbacks remain useful for development; they are not
+a production substitute for this verified source and image handoff. The
+published sitectl documentation is the command and image-to-variable reference;
+an architecture page does not replace it.
 
 Keep similarly named images in their actual ownership boundary. The following
 organization Vault runtime is a target promotion contract until the
