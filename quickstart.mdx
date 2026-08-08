@@ -6,8 +6,8 @@ description: "Create and prepare your first supported LibOps site"
 LibOps supports the same application templates in two operating models: run the Compose project on infrastructure you control, or use the managed platform. Start with the ownership model that matches your team; the downstream Git repository remains the reviewable source of truth in either case.
 
 <CardGroup cols={2}>
-  <Card title="Use the managed platform" icon="cloud" href="https://dash.libops.io">
-    Create the organization, project, and Site in the dashboard while LibOps manages the surrounding infrastructure.
+  <Card title="Request the managed beta" icon="cloud" href="https://libops.io/#managed-beta">
+    Ask LibOps to review whether the currently released managed capability set fits your institution. Managed hosting is not a self-service offer yet.
   </Card>
   <Card title="Run a template yourself" icon="server" href="/templates/app-support">
     Fork a supported Compose template and operate it on a laptop, campus server, VM, or supported cloud.
@@ -18,9 +18,9 @@ LibOps supports the same application templates in two operating models: run the 
 
 Choose the application that meets the service need, then name the institutional owner for content, access, upgrades, backups, and incident decisions. Review [Supported Applications](/templates/app-support) for the current application-ownership model before adding local code.
 
-For a managed Site, sign in to the [LibOps dashboard](https://dash.libops.io). For a self-hosted Site, start with the matching downstream template and [fork ownership guide](/templates/downstream-forks).
+For a managed Site, first [request a managed-beta review](https://libops.io/#managed-beta). LibOps provides Dashboard access only after accepting a beta scope whose required integrations have passed their release gates. For a self-hosted Site, start with the matching downstream template and [fork ownership guide](/templates/downstream-forks).
 
-For a first managed purchase, the onboarding screen collects the organization name, a provider-verified GitHub account, the supported application template, VM size, and storage choice before checkout. After Stripe confirms payment, one durable provisioning operation creates the project, private managed repository, production Site, initial deployment, and IP allowlist. The progress screen reports that operation; closing the browser does not cancel it. If onboarding reports that setup needs support, do not submit another purchase or create duplicate resources—contact LibOps from the link on that screen.
+For an accepted managed-beta engagement, the onboarding screen collects the organization name, a provider-verified GitHub account, the supported application template, VM size, and storage choice before checkout. After Stripe confirms payment, one durable provisioning operation creates the project, private managed repository, production Site, initial deployment, and IP allowlist. The progress screen reports that operation; closing the browser does not cancel it. If onboarding reports that setup needs support, do not submit another purchase or create duplicate resources—contact LibOps from the link on that screen.
 
 ## 2. Establish the resource boundary
 

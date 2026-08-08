@@ -3,6 +3,8 @@ title: "LibOps Task Agent Workflow"
 description: "How LibOps connects the LibOps Task Agent, preview environments, GitHub pull requests, and staff review to safely customize sites"
 ---
 
+import TaskAgentRuntime from "/snippets/task-agent-runtime.generated.mdx";
+
 The **LibOps Task Agent** is an AI-assisted development tool that implements customization requests directly within your site repository. The agent operates against isolated development or ephemeral preview environments, so every change is staged and reviewable before it reaches production.
 
 This workflow lets stakeholders propose and preview site changes without bypassing technical review, quality assurance, or established deployment controls.
@@ -13,9 +15,9 @@ The Task Agent is currently a managed-beta capability, not a generally available
 
 ## Models and execution boundary
 
-The candidate production catalog contains one runtime selection: the `codex` harness through an exact digest of the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) image, using the customer model name `glm-5.2:cloud`. Other harnesses and models are not supported options in this catalog. A catalog entry is configuration, not evidence that the runtime has passed promotion.
+<TaskAgentRuntime />
 
-Your organization's private Cloud Run service is an authenticated model gateway. It does not host model weights or perform inference. The gateway maps the customer model name `glm-5.2:cloud` to `glm-5.2` and forwards the request to Ollama Cloud at `https://ollama.com`, where inference runs. Access to the organization gateway remains private to authorized platform workloads.
+A catalog entry is configuration, not evidence that the runtime has passed promotion. Access to the organization gateway remains private to authorized platform workloads.
 
 LibOps reviews new runtime options before adding them to the production catalog; documentation and provisioning are updated together when support is available.
 
