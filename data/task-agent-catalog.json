@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "default_model": "glm-5.2:cloud",
+  "default_harness": "codex",
+  "harnesses": [
+    {
+      "id": "codex",
+      "image": "ghcr.io/libops/cli-sandbox@sha256:c0dc9a8a354df9fc0fced0bddb0b8a4b117d2ceb9e67353a135405145e8214d5"
+    }
+  ],
+  "models": [
+    {
+      "id": "glm-5.2:cloud",
+      "gateway_image_repository": "us-docker.pkg.dev/libops-images/public/task-agent-ollama-glm-5-2-cloud",
+      "gateway_upstream_url": "https://ollama.com",
+      "upstream_model": "glm-5.2",
+      "inference_provider": "Ollama Cloud",
+      "inference_location": "Ollama Cloud infrastructure",
+      "nat_slot": 0
+    }
+  ],
+  "gateway_vault": {
+    "role": "task-agent-gateway",
+    "path": "secret-internal/task-agent/ollama_api_key",
+    "field": "value"
+  }
+}
