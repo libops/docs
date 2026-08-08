@@ -139,9 +139,12 @@
           {
             "group": "Domains",
             "pages": [
+              "api/reference/check_site_domain",
               "api/reference/create_site_domain",
               "api/reference/delete_site_domain",
-              "api/reference/list_site_domains"
+              "api/reference/get_site_domain",
+              "api/reference/list_site_domains",
+              "api/reference/retry_site_domain_provisioning"
             ]
           },
           {
@@ -299,7 +302,6 @@
           {
             "group": "Task Agent",
             "pages": [
-              "api/reference/append_task_log",
               "api/reference/cancel_task",
               "api/reference/create_task",
               "api/reference/get_task",

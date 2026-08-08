@@ -3,11 +3,11 @@ title: "API and sitectl"
 description: "How the LibOps API and sitectl command line support operators, developers, and automation"
 ---
 
-LibOps gives teams three operating surfaces: the dashboard, the full platform API, and the `sitectl` command-line utility.
+LibOps gives teams three operating surfaces: the dashboard, the customer-facing platform API, and the `sitectl` command-line utility.
 
 That matters because institutions rarely have a single type of operator. Some work belongs in a UI, some belongs in automation, and some belongs in a terminal next to the application repository.
 
-## Full Platform API
+## Customer Platform API
 
 The LibOps API exposes the core platform resources:
 
@@ -23,6 +23,8 @@ The LibOps API exposes the core platform resources:
 - Deployment and status operations.
 
 Teams can use the API to integrate LibOps with provisioning systems, reporting workflows, governance tooling, or internal service catalogs.
+
+The published OpenAPI document intentionally excludes LibOps administrative and control-plane RPCs. Those operations are internal implementation details, not customer automation contracts.
 
 <Card title="API Reference" icon="code" href="/api/reference/introduction">
   Explore the LibOps API endpoints and OpenAPI specification.
