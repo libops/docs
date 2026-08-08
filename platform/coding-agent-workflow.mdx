@@ -7,19 +7,19 @@ The **LibOps Task Agent** is an AI-assisted development tool that implements cus
 
 This workflow lets stakeholders propose and preview site changes without bypassing technical review, quality assurance, or established deployment controls.
 
-<Info>
-The default model is `glm-5.2:cloud`. `kimi-k2.6` is also supported, and LibOps evaluates new open-weight models as they become available.
-</Info>
+<Warning>
+The Task Agent is currently a managed-beta capability, not a generally available production feature. As of August 8, 2026, the release candidate is blocked: its catalog still points to a sandbox build that predates the required managed-egress contract, and its embedded skill manifest points to a canonical source revision that has not been published. LibOps will enable it only after replacement artifacts pass release verification, the organization model gateway passes its dependency readiness check, and an end-to-end coding-task canary succeeds. Do not make Task Agent availability part of an initial site launch plan unless LibOps confirms those checks for your deployment.
+</Warning>
 
 ## Models and execution boundary
 
-The LibOps Task Agent can run `codex`, `claude`, `pi`, `opencode`, or `gemini` through the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) image.
+The candidate production catalog contains one runtime selection: the `codex` harness through an exact digest of the [`libops/cli-sandbox`](https://github.com/libops/cli-sandbox) image, using the customer model name `glm-5.2:cloud`. Other harnesses and models are not supported options in this catalog. A catalog entry is configuration, not evidence that the runtime has passed promotion.
 
-The supported models run inside your organization's infrastructure on the LibOps-managed platform. Only members of your organization can access the infrastructure serving those models.
+Your organization's private Cloud Run service is an authenticated model gateway. It does not host model weights or perform inference. The gateway maps the customer model name `glm-5.2:cloud` to `glm-5.2` and forwards the request to Ollama Cloud at `https://ollama.com`, where inference runs. Access to the organization gateway remains private to authorized platform workloads.
 
-Contact [LibOps](https://www.libops.io/contact/) if your organization wants to integrate with Anthropic, OpenAI, or another model provider.
+LibOps reviews new runtime options before adding them to the production catalog; documentation and provisioning are updated together when support is available.
 
-For site coding tasks, the runner requests the application plugin's assistant development mode before the harness starts. Drupal, WordPress, and ISLE currently declare safe downstream-owned mount lists and a profiled `cli-sandbox` service in `docker-compose.override.yml`. Bundled applications such as OJS, Omeka, and ArchivesSpace do not expose broad development mounts because those mounts could hide extensions supplied by the versioned image; their changes stay in explicit tracked extension paths and are tested through a rebuilt downstream image. Current component options and command syntax live in the [sitectl component documentation](https://sitectl.libops.io/components).
+For hosted coding tasks, the runtime controller owns a fixed direct Docker launch and does not execute or rewrite a customer repository's Compose configuration to define the sandbox. The agent receives the isolated task checkout and bounded runtime files; it does not receive the Docker socket, production checkout, cloud credentials, or GitHub token. Application-specific guidance comes from the release-verified embedded skill bundle without broadening that execution boundary.
 
 ## Why use the LibOps Task Agent?
 
@@ -37,17 +37,17 @@ This is **not** unchecked automation. It reduces the time between "we need a cha
   <Step title="Task creation" icon="message">
     A site owner, developer, or LibOps operator defines a task for a specific site.
   </Step>
-  <Step title="Environment selection" icon="server">
-    LibOps provisions or selects an isolated development or ephemeral preview environment for the work.
+  <Step title="Task branch and preview" icon="server">
+    LibOps reserves a dedicated task branch at the verified base revision and brings its non-production preview environment to readiness.
   </Step>
   <Step title="Agent implementation" icon="wand-magic-sparkles">
     The Task Agent implements the change in the site's repository on a dedicated task branch.
   </Step>
-  <Step title="Pull request" icon="github">
-    The agent opens or updates a GitHub pull request, which becomes the record of every code and configuration change.
-  </Step>
   <Step title="Preview deployment" icon="globe">
-    The preview environment shows the proposed changes on a live version of the site.
+    LibOps pushes the changed revision and waits for that exact commit to reach a ready preview state.
+  </Step>
+  <Step title="Pull request" icon="github">
+    After preview readiness, the agent opens or updates a GitHub pull request, which becomes the record of every code and configuration change.
   </Step>
   <Step title="Stakeholder review" icon="eye">
     Site managers and other stakeholders validate the behavior and content in the preview environment before production changes.
@@ -63,9 +63,28 @@ This is **not** unchecked automation. It reduces the time between "we need a cha
   </Step>
 </Steps>
 
+## Starting a task from the Dashboard
+
+This path is available only after LibOps confirms Task Agent managed-beta readiness for the deployed release.
+
+<Steps>
+  <Step title="Wait for the initial site" icon="circle-check">
+    Confirm the Site's repository provisioning and initial deployment are ready. A newly accepted or still-provisioning Site is not ready for coding work.
+  </Step>
+  <Step title="Open the scoped task page" icon="wand-magic-sparkles">
+    Open the Site detail page and select **Open Task Agent**. The Dashboard carries the Organization, Project, and Site context into the Tasks page.
+  </Step>
+  <Step title="Describe one change" icon="message">
+    Verify the selected context, describe one bounded outcome, and select **Start**. Do not include passwords, API keys, tokens, or other secret values in the request.
+  </Step>
+  <Step title="Review the result" icon="eye">
+    Follow the task status, then inspect both the exact preview and GitHub pull request before approving a merge.
+  </Step>
+</Steps>
+
 ## Starting a task from Slack
 
-The LibOps Slack integration lets stakeholders start tasks without leaving their primary communication tool.
+An operator-linked Slack workspace can start tasks without leaving the primary communication tool. Slack and Task Agent must both be enabled for the exact managed-beta deployment; see [Slack Integration](/platform/slack) before using these commands.
 
 <Steps>
   <Step title="Discover your resources" icon="list">
@@ -169,7 +188,7 @@ The Task Agent is useful when stakeholders need a reviewable change but do not n
     - No local environment required.
     - Same GitHub PR + preview environment as the manual path.
     - Iterative refinement via `@libops` PR comments.
-    - Available from the Dashboard or Slack.
+    - Available from the Dashboard, or an operator-linked Slack workspace, only for an approved managed-beta deployment.
   </Tab>
 
   <Tab title="Engineering locally" icon="laptop-code">
@@ -186,7 +205,7 @@ The Task Agent is useful when stakeholders need a reviewable change but do not n
         Use the same Git-based workflow as the agent: create a branch, push changes, and open a PR.
       </Step>
       <Step title="Automatic preview" icon="globe">
-        Opening a PR provisions a preview environment for your branch, exactly like the agent path.
+        Opening a PR provisions a preview environment through the same branch deployment contract. The timing differs: the agent path verifies its updated preview before opening the PR.
       </Step>
       <Step title="Operate with sitectl" icon="terminal">
         Operate local or remote Compose contexts with sitectl, and use the LibOps platform integration for managed secrets and deployments.
@@ -237,7 +256,7 @@ This combination lets directors, site managers, and engineers participate withou
     Managed, co-managed, and self-managed customization options.
   </Card>
   <Card title="Slack integration" icon="slack" href="/platform/slack">
-    Use the LibOps Task Agent from your Slack workspace.
+    Connect an approved managed-beta Slack workspace to the LibOps Task Agent.
   </Card>
   <Card title="GitHub integration" icon="github" href="/platform/github">
     How task branches, pull requests, and preview environments integrate with your repository.

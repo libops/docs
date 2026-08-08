@@ -31,23 +31,29 @@ You primarily interact with LibOps through the hosted dashboard and, if configur
 
 Most site management workflows begin in the Dashboard.
 
+The first paid managed Site uses the single-page onboarding flow described in the [Quickstart](/quickstart): choose the template and infrastructure, complete checkout, and wait for the durable provisioning status to finish. The steps below describe adding a Site after the Organization and Project already exist.
+
 <Steps>
   <Step title="Pick the organization and project" icon="folder-tree">
     Identify the institutional organization and project that should own the new site.
   </Step>
-  <Step title="Create the site" icon="circle-plus">
-    Select **Create site** and choose one of the supported application templates.
+  <Step title="Prepare the repository" icon="github">
+    For a customer-owned repository, install the LibOps GitHub App with access to the repository and start from a supported application template. First-site onboarding creates the private LibOps-managed repository automatically.
   </Step>
-  <Step title="Configure the repository" icon="github">
-    Decide whether LibOps should manage the site's repository or connect to your own GitHub organization.
+  <Step title="Create the site" icon="circle-plus">
+    Select **Create site**, enter the installed customer repository, and choose the compatible application template so the Dashboard can apply its lifecycle defaults.
   </Step>
   <Step title="Set up the environment" icon="gear">
-    Name the site, choose its purpose (production, staging, etc.), and set the intended hostname.
+    Name the Site and mark it as production only when it represents the repository's production branch. Configure a custom hostname after the Site exists.
   </Step>
-  <Step title="Review and launch" icon="check">
-    Confirm the generated configuration, including repository, access, and hostnames, then finalize the site.
+  <Step title="Wait for readiness" icon="check">
+    Site creation records desired state; it is not deployment success. Wait for provisioning and the initial deployment to reach their terminal ready states before configuring DNS or starting review work.
   </Step>
 </Steps>
+
+<Warning>
+If managed onboarding or Site provisioning reports a terminal failure, do not create a replacement with the same repository or purchase another subscription. Contact LibOps so the recorded operation can be safely resumed or refunded without duplicating infrastructure.
+</Warning>
 
 <Warning>
 LibOps only supports workloads based on the documented templates. Running other applications on managed infrastructure is not permitted. See the [Terms of Service](https://www.libops.io/terms/) for details.

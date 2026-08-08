@@ -7,6 +7,8 @@ description: 'LibOps API Reference'
 
 The LibOps API gives teams programmatic access to the platform. It is the same operational model exposed through the dashboard and `sitectl`, available for automation, governance, reporting, and integration work.
 
+This reference covers the customer-facing API. LibOps administrative and control-plane RPCs are intentionally omitted from the published OpenAPI document and navigation.
+
 Use the API to manage:
 
 - Organizations.
@@ -25,12 +27,12 @@ Use the API to manage:
   icon="code"
   href="/api/reference/openapi.yaml"
 >
-  View the full OpenAPI specification file.
+  View the complete customer OpenAPI specification file.
 </Card>
 
 ## Why It Matters
 
-LibOps is designed to make open-source application operations repeatable. A full API means the platform can fit into your existing institutional workflows instead of forcing every task through a UI.
+LibOps is designed to make open-source application operations repeatable. A stable customer API means the platform can fit into your existing institutional workflows instead of forcing every task through a UI.
 
 Teams can connect LibOps to internal provisioning flows, service catalogs, access reviews, reporting tools, or custom automation while preserving the same organization, project, site, secret, firewall, member, and deployment model.
 
@@ -47,8 +49,10 @@ Authorization: Bearer <your_api_key>
 The base URL for the API is:
 
 ```text
-https://api.libops.io/v1
+https://api.libops.io
 ```
+
+Append the ConnectRPC operation path shown on each reference page, such as `/libops.v1.SiteService/CreateSite`.
 
 ## Response Format
 
