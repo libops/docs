@@ -20,6 +20,8 @@ Choose the application that meets the service need, then name the institutional 
 
 For a managed Site, sign in to the [LibOps dashboard](https://dash.libops.io). For a self-hosted Site, start with the matching downstream template and [fork ownership guide](/templates/downstream-forks).
 
+For a first managed purchase, the onboarding screen collects the organization name, a provider-verified GitHub account, the supported application template, VM size, and storage choice before checkout. After Stripe confirms payment, one durable provisioning operation creates the project, private managed repository, production Site, initial deployment, and IP allowlist. The progress screen reports that operation; closing the browser does not cancel it. If onboarding reports that setup needs support, do not submit another purchase or create duplicate resources—contact LibOps from the link on that screen.
+
 ## 2. Establish the resource boundary
 
 Managed resources are organized as:
@@ -28,7 +30,7 @@ Managed resources are organized as:
 2. **Project** — related Sites and configuration that share an application purpose.
 3. **Site** — one runtime environment, such as production, staging, or review.
 
-Create or select each level in the dashboard. Keep shared settings at the highest appropriate scope and use Site-level overrides only when one environment must differ. See [Resource Hierarchy](/platform/resource-hierarchy) for membership, firewall, setting, and secret inheritance.
+The first managed onboarding flow creates or selects the Organization and then creates its Project and production Site. Existing customers can select an existing Organization and Project when adding another Site. Keep shared settings at the highest appropriate scope and use Site-level overrides only when one environment must differ. See [Resource Hierarchy](/platform/resource-hierarchy) for membership, firewall, setting, and secret inheritance.
 
 Self-hosted operators should establish the same environment boundaries in repository, DNS, credential, and backup naming even when they do not use the managed API.
 
@@ -36,7 +38,7 @@ Self-hosted operators should establish the same environment boundaries in reposi
 
 The downstream repository owns application customizations, Compose configuration, and reviewed environment defaults. Do not edit a running container as a deployment mechanism.
 
-- **Managed platform:** connect the Site to its GitHub repository and branch, then let the platform build and deploy the reviewed revision.
+- **Managed first site:** onboarding copies the selected template into a private LibOps-managed repository and resolves its default branch before creating the initial deployment. For a customer-owned repository, install the LibOps GitHub App with access to that repository before connecting it to a Site.
 - **Self-hosted:** provision a supported runtime, persistent storage, DNS, and backups, then deploy the fork using the template contract. [cloud-compose](/infrastructure/cloud-compose) can provision supported VM-based environments.
 
 Technical operators can add `sitectl` for consistent local and remote Compose contexts. Installation, exact command syntax, and application-plugin behavior are maintained in the [canonical sitectl documentation](https://sitectl.libops.io), not duplicated here.
@@ -51,6 +53,10 @@ Keep a new Site private while staff validate it. Before launch:
 - verify backups and perform an application-aware restore test;
 - review the Site in a non-production environment and merge the approved repository change;
 - follow [Getting a Site Ready to Publish](/platform/getting-site-ready-to-publish) for DNS, firewall, email, and launch checks.
+
+## 5. Make the first reviewed change
+
+You can always work through a normal branch and GitHub pull request. In an approved managed-beta deployment where LibOps has enabled the Task Agent for the exact release, open the ready Site in the Dashboard, select **Open Task Agent**, confirm the Organization, Project, and Site context, and describe one scoped change. Review both the resulting preview and pull request before merging. See the [Task Agent workflow](/platform/coding-agent-workflow) for its current availability gates and review boundary.
 
 ## Operator references
 
