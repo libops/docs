@@ -21,7 +21,14 @@
   ],
   "gateway_vault": {
     "role": "task-agent-gateway",
-    "path": "secret-internal/task-agent/ollama_api_key",
+    "path": "secret-organization/ollama_api_key",
     "field": "value"
+  },
+  "release_qualification": {
+    "qualified": false,
+    "sandbox_image": "ghcr.io/libops/cli-sandbox@sha256:c0dc9a8a354df9fc0fced0bddb0b8a4b117d2ceb9e67353a135405145e8214d5",
+    "skill_source_commit": "1be70fce59dd4534a3259332f8017f5625769e4d",
+    "skill_bundle_sha256": "a77e209e154bfb15afc6cb3f55d4cf7a23d0891afd5f97dad40160fc181a18e1",
+    "gateway_image_identity": "us-docker.pkg.dev/libops-images/public/task-agent-ollama-glm-5-2-cloud@sha256:a6b878b14a8188840c51637c4f4eebef393890bd48ca6e73db1996559d6d261a"
   }
 }
