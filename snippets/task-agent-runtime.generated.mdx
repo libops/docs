@@ -6,5 +6,9 @@
 - Customer model name: `glm-5.2:cloud`
 - Inference provider: Ollama Cloud
 - Inference location: Ollama Cloud infrastructure, not the customer GCP project
+- Customer release status: **not qualified**
+- Skill source commit: `1be70fce59dd4534a3259332f8017f5625769e4d`
+- Skill bundle SHA-256: `a77e209e154bfb15afc6cb3f55d4cf7a23d0891afd5f97dad40160fc181a18e1`
+- Gateway image: `us-docker.pkg.dev/libops-images/public/task-agent-ollama-glm-5-2-cloud@sha256:a6b878b14a8188840c51637c4f4eebef393890bd48ca6e73db1996559d6d261a`
 
 The private Cloud Run service in the customer organization is an authenticated gateway. It does not host model weights or perform inference. It forwards the fixed `glm-5.2:cloud` customer model to `glm-5.2` at `https://ollama.com`. No other harness or model is in the candidate catalog.
