@@ -7,6 +7,11 @@
     "light": "#07C983",
     "dark": "#15803D"
   },
+  "seo": {
+    "metatags": {
+      "slack-app-id": "A0BKB0KUTJB"
+    }
+  },
   "favicon": "/favicon.ico",
   "navigation": {
     "global": {

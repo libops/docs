@@ -3,24 +3,28 @@ title: "Slack Integration"
 description: "How to use the LibOps Task Agent directly from your Slack workspace"
 ---
 
-The LibOps Slack integration lets team members work with the **LibOps Task Agent** without leaving Slack. It is available only for an approved managed-beta deployment whose release evidence includes Slack and Task Agent compatibility. It is not a public Community Slack support channel.
-
-<Warning>
-  The current Dashboard does not contain a Slack installation screen. Do not look for an **Organization Settings → Integrations** button. Installation is operator-assisted until that owner-authorized Dashboard journey and its acceptance tests ship.
-</Warning>
+The LibOps Slack integration lets your team use the **LibOps Task Agent** without leaving Slack.
 
 ## Connect Your Slack Workspace
 
-To evaluate the Slack integration for your institution:
+To connect Slack:
 
-1. Ask your LibOps managed-beta contact to confirm that Slack is enabled for the exact deployed API release and to provide that environment's installation URL.
-2. Have an authorized Slack Workspace Owner review the requested bot scopes and open the provided installation URL. The server-owned route is `/integrations/slack/install`; do not copy an installation URL between LibOps environments.
-3. Complete Slack's authorization prompt. LibOps stores the workspace bot token in its configured secret store and records the workspace installation; it does not request a Slack user token.
-4. In Slack, run `/libops login`. Follow the one-time link to sign in to LibOps and explicitly confirm the account connection.
-5. Verify `/libops orgs`, then use `/libops unlink` if the account was linked in error.
+<a href="https://api.libops.io/integrations/slack/install">
+  <img
+    alt="Add to Slack"
+    height="40"
+    width="139"
+    src="https://platform.slack-edge.com/img/add_to_slack.png"
+    srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
+  />
+</a>
+
+1. Have a Slack Workspace Owner select **Add to Slack** and approve the LibOps app.
+2. In Slack, run `/libops login` and follow the link to connect your LibOps account.
+3. Run `/libops orgs` to confirm that the connection works.
 
 <Note>
-  Slack installation is workspace-wide, while `/libops login` links one Slack user to one LibOps account. Removing the app in Slack revokes the recorded workspace installation and deletes its stored bot token. Contact your managed-beta operator if installation, revocation, or account unlinking does not reach that terminal state.
+  The app is installed once for the Slack workspace. Each team member must run `/libops login` to connect their own account. Run `/libops logout` to disconnect your account.
 </Note>
 
 ## Discovering Resources
@@ -28,14 +32,14 @@ To evaluate the Slack integration for your institution:
 Before interacting with a site, you can use slash commands to discover the resources available to your account.
 
 - `/libops orgs`: List the organizations you belong to.
-- `/libops projects [org_uuid]`: List projects within a specific organization.
-- `/libops sites [project_uuid]`: List sites within a specific project.
+- `/libops projects`: List all projects you can access. Add an organization UUID to filter, or `page N` to move through results.
+- `/libops sites`: List all sites you can access. Add a project UUID to filter, or `page N` to move through results.
 
-The site list includes a pre-formatted command for each environment, making it easy to initiate a task:
+Each page contains up to 20 results. The site list includes a ready-to-use command for each environment:
 
 ```text
 - Main site `[site_uuid]` (production)
-  Run: `/libops chat [org_uuid] project [project_uuid] site [site_uuid] <request>`
+  Run: `/libops chat [site_short_name] <request>`
 ```
 
 ## Using the LibOps Task Agent in Slack
@@ -44,10 +48,10 @@ Once you have identified a site, you can assign it a task directly from any chan
 
 ### Initiating a Task
 
-To start a new task, use the `/libops chat` command followed by the site identifiers and your request:
+To start a new task, provide the site UUID or short name followed by your request:
 
 ```text
-/libops chat [org_uuid] project [project_uuid] site [site_id] Add a homepage alert banner that editors can toggle.
+/libops chat [site_uuid_or_short_name] Add a homepage alert banner that editors can toggle.
 ```
 
 If your request is identified as a customization task, LibOps will:
