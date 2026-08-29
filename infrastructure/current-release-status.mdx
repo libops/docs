@@ -7,7 +7,26 @@ description: "A dated availability record for the independently released artifac
 There is not yet a published, platform-wide known-good release set for the managed shared-router and private-PPB request path. The architecture pages describe the target contract, but they are not evidence that this integration is generally available. Do not change production DNS or infrastructure for that path until a later status record identifies every immutable artifact and its green end-to-end release gate.
 </Warning>
 
-This snapshot was reviewed on **August 10, 2026**. It is a release record, not a moving "latest" lookup. A later tag does not silently update the compatibility claims on this page. Older dated references below remain evidence for those exact artifacts; they are not claims that the referenced version is the newest release.
+## Managed-platform candidate status — August 29, 2026
+
+No customer-facing managed capability is generally available in this candidate. Source-complete work remains blocked until the exact deployed revision passes its hosted release gates. Managed hosting remains request-only; LibOps has no self-service managed offer or public managed price book at this stage.
+
+| Capability | Status | Gate that remains |
+| --- | --- | --- |
+| First-customer onboarding and organization/site provisioning | Recovery in progress | Complete the canonical deployment, prove one durable first-customer flow from payment through an operations-ready Site, and retain rollback evidence. Closing the browser must not cancel the durable operation. |
+| GitHub App connection and repository discovery | Blocked | The source fixes for the install URL, repository discovery, and fail-closed permission/event validation are on API `main`. The production App registration still needs the required organization-member read permission and pull-request event, followed by a selected-repository install and webhook canary against the exact deployed API revision. |
+| Slack workspace connection | Blocked | The authenticated install/callback source fix is on API `main`, but the exact revision must be deployed before a Slack Workspace Owner installs the app. Login, resource discovery, task admission, and a threaded completion reply must then pass end to end. |
+| Customer organization Vault | Blocked | Complete the organization deployment and Vault workload routes, then retain initialization, secret round-trip, restart, and recovery evidence for the exact three-image runtime. KMS and GCS supply the recovery material; synthetic custodian keys are not part of this design. |
+| Managed and custom-domain edge routing | Blocked | Supply scoped Cloudflare authority for the active `libops.io` zone, finish the canonical rollout, and pass DNS, certificate, route, authorization-preservation, rollback, and teardown canaries. |
+| Operational reconciliation | Blocked | Restore required hosted API CI for the exact candidate, complete deployment canaries, and prove the worker/fencing and MariaDB recovery gates. Source validation alone is insufficient. |
+| LibOps Task Agent | Blocked | Publish and verify the hardened sandbox and embedded skills artifacts, deploy the complete GitHub/Slack/runtime path, and pass one task-to-reviewable-pull-request canary. |
+| Managed application families | Compatibility candidates only | Promote exact immutable tuples and hosted evidence for Drupal, Islandora, WordPress, Open Journal Systems, Omeka Classic, Omeka S, and ArchivesSpace. A released template does not prove aggregate managed availability. |
+| Availability and recovery | Single-zone preview | Complete MariaDB and customer-Vault restore drills against the approved one-hour MariaDB RPO/RTO and one-hour/two-hour Vault RPO/RTO objectives. There is no managed SLA or automatic failover claim. |
+| Returning-customer and additional-project billing | Planned | Keep this out of the first-customer release claim until its independent billing and provisioning gates pass. |
+
+The source references above include API pull requests [#93](https://github.com/libops/api/pull/93), [#95](https://github.com/libops/api/pull/95), [#96](https://github.com/libops/api/pull/96), and [#97](https://github.com/libops/api/pull/97), all merged into candidate commit [`0df01d0`](https://github.com/libops/api/commit/0df01d09786dcb5a235559c71be63b556f36ce6d). They prove reviewed source changes, not production promotion.
+
+The published-foundation snapshot below was reviewed on **August 10, 2026**. It is a release record, not a moving "latest" lookup. A later tag does not silently update the compatibility claims on this page. Older dated references remain evidence for those exact artifacts; they are not claims that the referenced version is the newest release.
 
 ## Status meanings
 

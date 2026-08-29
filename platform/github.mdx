@@ -5,6 +5,10 @@ description: 'How LibOps uses GitHub repositories, the LibOps GitHub App, and ma
 
 LibOps uses GitHub repositories as the source of truth for site code, deployment configuration, branches, and pull requests. A site can use a LibOps-managed repository by default, or it can use a repository in your own GitHub organization after you install the LibOps GitHub App.
 
+<Warning>
+GitHub App connection is not generally available in the [August 29, 2026 candidate](/infrastructure/current-release-status). Do not install the App for a customer repository until LibOps supplies the install link for an accepted managed-beta deployment and confirms the production App registration, deployed API revision, and selected-repository webhook canary have passed. The workflow below is the operating contract after that release gate.
+</Warning>
+
 ## Repository Options
 
 ### LibOps Managed
