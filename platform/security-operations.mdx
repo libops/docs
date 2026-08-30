@@ -284,19 +284,18 @@ ownership and release cadence:
 
 | Image | Owner and purpose | Promotion rule |
 | --- | --- | --- |
-| `vault-server` | The `terraform-vault-cloudrun` repository's Cloud Run-compatible Vault server image | Rebuild the exact verified upstream Vault release with the patched toolchain, publish from protected main to GHCR and public GAR, then pin its public GAR digest |
-| `vault-init` | The independent one-shot initializer that seals initialization material into GCS with Cloud KMS | Release independently, publish the reviewed manifest to GHCR and public GAR, and pin the selected semantic release by GAR digest |
-| `vault-proxy` | The independent request boundary that separates explicit public Vault paths from administrator-only paths | Release independently, publish to GHCR and public GAR, and pin its GAR digest separately from both server and initializer |
+| `vault-server` | The `terraform-vault-cloudrun` repository's Cloud Run-compatible Vault server image | Rebuild the exact verified upstream Vault release with the patched toolchain and publish the reviewed LibOps `main` channel to GHCR and public GAR |
+| `vault-init` | The independent one-shot initializer that seals initialization material into GCS with Cloud KMS | Publish independently from protected main and advance consumers through the managed LibOps `main` channel after its release gates pass |
+| `vault-proxy` | The independent request boundary that separates explicit public Vault paths from administrator-only paths | Publish independently from protected main and advance through its managed LibOps `main` channel rather than a hand-maintained internal pin |
 
 Do not substitute the API repository's private `api-vault-agent` helper for
 either the Vault server or `vault-init`, and do not advance all three images
-under one shared tag. `sitectl-admin` resolves
-the independently selected initializer and proxy release tags to immutable
-digests before Terraform runs. It follows annotated GitHub tags to the final
-release commit and requires the Cosign caller repository, tag ref, exact
-workflow SHA, and caller-workflow annotation in addition to the pinned shared
-publisher identity. Reconciliation must fail closed when any of the three
-digest-pinned inputs is missing.
+under one shared tag. Each repository owns its protected `main` publication,
+verification, and rollback path. A deployment record captures the resolved
+manifest digest and publisher evidence for the exact rollout; consumers do not
+create a second hand-maintained version pin for a LibOps-owned component.
+Reconciliation must fail closed when a selected channel lacks its required
+publication or verification evidence.
 
 The proxy's public route list is an allowlist, not a string prefix list. A
 route is an exact path, a single `*` path segment, or one final `/**` subtree;
@@ -340,7 +339,16 @@ LibOps templates use Renovate and repository workflows to propose changes for:
 
 An update is not complete because a pull request exists. It still needs CI, application smoke testing, migration review, a production-shaped preview where appropriate, a verified backup, and post-deployment health checks.
 
-Production artifacts and Terraform modules should use immutable references. Automatic updates of privileged containers, Docker-socket consumers, or host-management services from moving `main` or `latest` tags are outside the supported security model.
+LibOps-owned packages, images, workflows, and Terraform modules follow their
+reviewed managed release reference, normally the protected `main` publication
+channel. That keeps internal fixes moving without forcing operators to update a
+second pin. The deployment record still captures the resolved commit or digest,
+publisher evidence, tests, and rollback target for the exact rollout.
+
+External dependencies that LibOps does not control use reviewed immutable
+versions, commits, checksums, or digests. Automatic updates of privileged
+third-party containers, Docker-socket consumers, or host-management services
+from an unreviewed moving tag are outside the supported security model.
 
 ## Role-based access
 
@@ -362,12 +370,12 @@ Self-hosted deployments should keep these concerns separate:
 
 | Concern | Required boundary |
 | --- | --- |
-| Application image | Immutable artifact; no live production edits |
+| Application image | Resolved deployment artifact recorded; external images pinned; no live production edits |
 | Site configuration | Reviewed repository state |
 | Credentials | Protected secret delivery, not Git or image layers |
 | Database and uploads | Persistent storage with independent backups |
 | Terraform state | Remote, encrypted, locked, access-controlled backend |
-| Management services | Pinned, verified artifacts with tightly scoped privileges |
+| Management services | LibOps managed release references or pinned external artifacts, with tightly scoped privileges |
 
 ## Operational accountability
 

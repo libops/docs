@@ -1,0 +1,162 @@
+---
+title: "Security Boundary Summary"
+description: "What LibOps can access, where customer data moves, how secrets and model providers are separated, and when to escalate"
+---
+
+This page is for institutional decision-makers, security reviewers, and
+technical owners evaluating a managed LibOps deployment. It describes the
+responsibility boundary. It is not a certification, audit report, service-level
+agreement, or claim that every described managed component is generally
+available.
+
+<Warning>
+No customer-facing managed capability is generally available in the current
+candidate. Check [Current Release Status](/infrastructure/current-release-status)
+before relying on a workflow below. A source-complete control becomes an
+operational claim only after the exact deployed revision passes its hosted
+access, recovery, alert, and rollback gates.
+</Warning>
+
+## Boundary at a glance
+
+| Area | LibOps boundary | Customer boundary |
+| --- | --- | --- |
+| People and permissions | Authenticates users, evaluates organization/project/site roles, and uses separate workload identities for managed services | Approves members, GitHub and Slack installations, repository scope, and any institutional identity policy |
+| Repository operations | Uses a GitHub App installation token scoped to the selected owner and repository; does not use a staff personal access token | Owns the customer GitHub organization, repository selection, branch policy, and review decision |
+| Infrastructure | Reconciles declared resources through bounded Terraform runner and controller identities | Approves cloud region, evidence location, retention, networking, and any customer-managed cloud access |
+| Secrets | Stores managed customer values in the customer organization Vault and passes references outside Vault | Enters values only through an approved secret surface and owns provider accounts, rotation timing, and custodian decisions |
+| AI-assisted work | Constrains the candidate Task Agent to a task, repository, branch, preview, and pull-request workflow | Chooses whether to enable the beta, approves provider terms and data movement, and reviews every proposed change |
+| Operations | Correlates platform events, alerts, and declared resource state for support | Supplies non-secret identifiers and business impact, validates application behavior, and names decision-makers for high-impact recovery |
+
+## Identity and authorization
+
+- Dashboard actions use the signed-in user's session. A pasted bearer token in
+  an assistant request does not replace that session.
+- Server-side authorization applies at organization, project, and site
+  boundaries. A resource name or identifier is not permission.
+- GitHub access uses the LibOps GitHub App installation selected for the
+  repository owner. The API mints a short-lived installation token only after
+  matching the requested repository and required permissions. The App private
+  key remains in the LibOps API Vault and is not sent to a site VM.
+- Slack installation requires a Workspace Owner. Each user separately links
+  their Slack identity to a LibOps account, and task admission still uses their
+  current LibOps role. The current candidate requests no Slack user scopes.
+- Managed cloud workloads use purpose-specific service accounts. Bootstrap,
+  request-serving, proxy, controller, and Terraform authority must not collapse
+  into one credential.
+
+GitHub App and Slack connection remain release-gated managed-beta workflows.
+Their exact consent and permission boundaries are documented on
+[GitHub Integration](/platform/github) and [Slack Integration](/platform/slack).
+
+## Data movement and storage
+
+| Data | Expected path | Boundary to review |
+| --- | --- | --- |
+| Organization, project, site, membership, operation, and task metadata | Dashboard or API to the LibOps control-plane database and durable workers | Retention, deletion, support access, and any customer-specific record obligation |
+| Site repository content and pull-request discussion | Customer or LibOps-managed GitHub repository to the scoped automation performing the requested repository operation | GitHub organization policy, selected repositories, branch protection, and reviewer access |
+| Slack command or thread content | Slack to the authenticated LibOps integration, then to the task record needed to answer or schedule the request | Channel audience, Slack retention, LibOps task retention, and whether the text contains material appropriate for the model provider |
+| Infrastructure desired state | API metadata to a stack-scoped Terraform runner and the customer's cloud project | State access, region, destructive-change approval, and recovery evidence |
+| Site application data | The site's managed VM, persistent storage, database, and declared backup path | Application-specific access, content retention, backup frequency, restore testing, and export/deletion needs |
+
+Secret values are not valid Terraform inputs, task metadata, Slack prompts,
+URLs, support tickets, or ordinary command arguments. Only a non-secret Vault
+path or integration reference may cross those surfaces.
+
+## Secret handling
+
+Managed customer secrets are separated by organization, project, and site in
+the customer organization Vault. The control plane stores resource metadata and
+opaque secret references, not a readable copy of the value. Workloads receive
+only the path and read authority required for their task.
+
+The released standalone Vault foundation separates the runtime, initializer,
+and public proxy identities. Vault Init `1.2.8` verifies JSON audit output,
+HMACed accessors, raw-value logging disabled, and elided list responses.
+terraform-vault-cloudrun `2.0.0` adds a retained, deletion-protected audit
+bucket, exact audit sink, scoped view access, and sink-export alert contract.
+Those releases prove source and plan behavior. They do not prove that the
+managed customer-organization path has adopted the controls or that a customer
+project passed an effective-access and outage drill.
+
+Use an approved secret-entry surface for database credentials, GitHub App
+material, Slack credentials, model-provider keys, and other customer-supplied
+values. Do not paste a secret into Dashboard chat, Slack, a Task Agent prompt,
+a GitHub issue, or a support request. Rotation must update and verify the live
+consumer before the old credential is revoked.
+
+## Model-provider boundary
+
+The LibOps Task Agent is blocked from general availability. The candidate
+design runs repository work in an isolated sandbox and sends model requests
+through an authenticated gateway in the customer organization. That gateway is
+not the model host: inference occurs at the selected external provider.
+
+Enabling a provider therefore means that task instructions, relevant
+repository context, and model responses can cross from the customer environment
+to that provider under its account, region, retention, training, acceptable-use,
+and incident terms. A customer-owned API key does not make inference local and
+does not by itself settle privacy or subprocessor obligations.
+
+Provider keys belong in the organization Vault at an exact integration path.
+The gateway may read only that path and contact only the configured provider;
+the model and task sandbox must not be able to read the key back. LibOps must
+record the chosen provider and model, but not the key value, and must support a
+reviewed create, validate, rotate, revoke, and delete lifecycle before this
+boundary is promoted.
+
+Every code change still requires a reviewable branch, preview where applicable,
+and pull request. Model output is a proposal, not production authority. See the
+[Task Agent workflow](/platform/coding-agent-workflow) for the review path and
+[Current Release Status](/infrastructure/current-release-status) for the gate.
+
+## Dependency trust boundary
+
+LibOps-owned components follow their reviewed managed release reference, such
+as the protected `main` publication channel, so fixes move through the platform
+without hand-updating internal pins. CI, signatures, provenance, deployment
+records, and rollback evidence establish which immutable artifact that channel
+resolved to for a particular rollout.
+
+External dependencies that LibOps does not control remain pinned to a reviewed
+version, commit, checksum, or digest appropriate to the dependency. Renovate
+may propose an update, but tests, migration review, preview, and rollback gates
+still decide whether it ships. A moving third-party dependency is not trusted
+merely because its repository is popular.
+
+## Support and incident escalation
+
+For routine support, provide the organization, project, site, approximate UTC
+time, observed action, and business impact. Do not send passwords, API keys,
+Vault tokens, session cookies, private keys, recovery shares, raw audit records,
+or a copied authorization header.
+
+Escalate immediately when there is suspected unauthorized access, secret
+exposure, cross-tenant behavior, destructive automation, missing audit evidence,
+or a failed recovery. LibOps Security owns classification, containment
+requirements, and evidence integrity. Site Reliability owns service recovery.
+Customer Success coordinates the customer-facing case. Legal decides whether
+contractual or regulatory notification is required and approves the message;
+an agent or support responder does not make that determination.
+
+Preserve facts, timestamps, identifiers, and original evidence locations.
+Separate observed facts from hypotheses. Do not rotate, delete, replay, or
+publish material in a way that destroys evidence unless the incident lead has
+authorized that step.
+
+## Evidence to request
+
+Before approving a managed production use, request a dated record naming:
+
+- the deployed API and infrastructure revisions and resolved artifact identities;
+- the GitHub App and Slack permissions actually granted, if enabled;
+- customer cloud projects, regions, audit locations, and effective privileged access;
+- secret stores, recovery custodians, rotation evidence, and restore results;
+- the enabled model provider, data terms, egress boundary, and key lifecycle, if Task Agent is enabled;
+- alert delivery, outage, rollback, backup, and restore canaries; and
+- open risks, exceptions, expiry dates, and named human approvers.
+
+The [Current Release Status](/infrastructure/current-release-status) remains the
+authority for whether a candidate capability has produced this evidence. This
+summary must not be used to infer a certification, SLA, data location, retention
+term, or legal approval that is not in a signed customer record.
