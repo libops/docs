@@ -37,6 +37,17 @@ def main() -> None:
     reject("platform/slack.mdx", "https://api.libops.io/integrations/slack/install")
     reject("quickstart.mdx", "Existing customers can select")
 
+    require("docs.json", '"platform/security-boundary-summary"')
+    for boundary in [
+        "Identity and authorization",
+        "Data movement and storage",
+        "Secret handling",
+        "Model-provider boundary",
+        "Support and incident escalation",
+        "/infrastructure/current-release-status",
+    ]:
+        require("platform/security-boundary-summary.mdx", boundary)
+
     print("Managed release claim validation passed.")
 
 

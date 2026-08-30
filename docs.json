@@ -87,6 +87,7 @@
               {
                 "group": "Security & Governance",
                 "pages": [
+                  "platform/security-boundary-summary",
                   "platform/security-operations"
                 ]
               },
